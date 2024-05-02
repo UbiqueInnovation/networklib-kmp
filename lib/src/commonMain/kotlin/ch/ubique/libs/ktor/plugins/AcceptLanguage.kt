@@ -10,14 +10,11 @@ import io.ktor.util.KtorDsl
 
 class AcceptLanguage private constructor(val languageProvider: () -> String) {
 
-	@KtorDsl
-	class Config {
-		var language: String? = null
-		var languageProvider: () -> String = {
-			requireNotNull(language) { "AcceptLanguage: `language` or `languageProvider` must be set." }
-		}
-	}
-
+	/**
+	 * Plugin to set the Accept-Language header for all requests.
+	 *
+	 * Configured by setting [language][Config.language] for a fixed value or [languageProvider][Config.languageProvider] for a dynamic value.
+	 */
 	companion object Plugin : HttpClientPlugin<Config, AcceptLanguage> {
 
 		override val key: AttributeKey<AcceptLanguage> = AttributeKey("AcceptLanguagePlugin")
@@ -34,4 +31,13 @@ class AcceptLanguage private constructor(val languageProvider: () -> String) {
 		}
 
 	}
+
+	@KtorDsl
+	class Config {
+		var language: String? = null
+		var languageProvider: () -> String = {
+			requireNotNull(language) { "AcceptLanguage: `language` or `languageProvider` must be set." }
+		}
+	}
+
 }
