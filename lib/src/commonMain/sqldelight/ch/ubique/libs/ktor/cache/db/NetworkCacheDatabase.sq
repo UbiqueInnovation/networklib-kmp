@@ -1,0 +1,7 @@
+import kotlin.Boolean;
+
+CREATE TABLE NetworkCache (
+    id INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    boolz INTEGER AS Boolean DEFAULT NULL
+);

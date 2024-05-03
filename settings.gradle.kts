@@ -1,5 +1,7 @@
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
+rootProject.name = "networklib-kmp"
+
 pluginManagement {
     repositories {
         gradlePluginPortal()

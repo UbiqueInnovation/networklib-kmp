@@ -4,6 +4,7 @@ plugins {
 	alias(libs.plugins.kotlinMultiplatform)
 	alias(libs.plugins.androidLibrary)
 	alias(libs.plugins.vanniktech.publish)
+	alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -26,9 +27,9 @@ kotlin {
 		iosSimulatorArm64()
 	).forEach {
 		it.binaries.framework {
-			baseName = "shared"
-			xcf.add(this)
+			baseName = "network"
 			isStatic = true
+			xcf.add(this)
 		}
 	}
 	applyDefaultHierarchyTemplate()
@@ -42,11 +43,26 @@ kotlin {
 			api(libs.ktor.client.content.negotiation)
 			api(libs.ktor.client.auth)
 			api(libs.ktor.serialization.kotlinx.json)
+			implementation(libs.sqldelight.runtime)
 		}
 		commonTest.dependencies {
 			implementation(libs.kotlin.test)
 			implementation(libs.parameterize)
 			implementation(libs.ktor.client.mock)
+		}
+		androidMain.dependencies {
+			implementation(libs.sqldelight.android.driver)
+		}
+		iosMain.dependencies {
+			implementation(libs.sqldelight.native.driver)
+		}
+	}
+
+	targets.all {
+		compilations.all {
+			compilerOptions.configure {
+				freeCompilerArgs.add("-Xexpect-actual-classes")
+			}
 		}
 	}
 }
@@ -56,6 +72,14 @@ android {
 	compileSdk = 34
 	defaultConfig {
 		minSdk = 26
+	}
+}
+
+sqldelight {
+	databases {
+		create("NetworkCacheDatabase") {
+			packageName.set("ch.ubique.libs.ktor.cache.db")
+		}
 	}
 }
 

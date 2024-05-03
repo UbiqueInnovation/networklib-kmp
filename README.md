@@ -7,7 +7,7 @@ A networking library building on Ktor.
 
 ## Dependency
 
-Available on Ubique's internal Artifactory.
+Available on Ubique's internal Artifactory:
 ```kotlin
 implementation("ch.ubique.kmp:network:1.0.0")
 ```
