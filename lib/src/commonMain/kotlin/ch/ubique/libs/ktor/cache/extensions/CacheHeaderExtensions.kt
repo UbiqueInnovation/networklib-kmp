@@ -1,6 +1,8 @@
 package ch.ubique.libs.ktor.cache.extensions
 
 import ch.ubique.libs.ktor.*
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HeaderValue
 import io.ktor.http.HttpHeaders
@@ -56,4 +58,11 @@ fun List<HeaderValue>.maxAge(): Long? {
 		?.getOrNull(1)
 		?.toLongOrNull()
 		?.times(1000L)
+}
+
+/**
+ * Set a cache control header.
+ */
+fun HttpRequestBuilder.cacheControl(cacheControl: String?) {
+	header(HttpHeaders.CacheControl, cacheControl)
 }
