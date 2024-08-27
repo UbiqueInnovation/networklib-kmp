@@ -1,7 +1,5 @@
 # Networking for Kotlin Multiplatform
 
-A networking library building on Ktor.
-
 [![Build](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/build.yml/badge.svg)](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/build.yml)
 [![Test](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/test.yml/badge.svg)](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/test.yml)
 
@@ -13,6 +11,15 @@ implementation("ch.ubique.kmp:network:1.0.0")
 ```
 
 You may find the current version and version history in the [Releases list](https://github.com/UbiqueInnovation/networklib-kmp/releases).
+
+### Ktor
+
+This networking library builds on Ktor.
+
+On how to use Ktor, have a look at the following resources:  
+- [Creating a cross-platform mobile application using Ktor](https://ktor.io/docs/client-create-multiplatform-application.html)
+- [Creating and configuring a client](https://ktor.io/docs/client-create-and-configure.html) 
+- [Making requests with Ktor](https://ktor.io/docs/client-requests.html)
 
 ## Features
 
