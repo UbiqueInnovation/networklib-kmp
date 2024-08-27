@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    uses: UbiqueInnovation/actions-android/.github/workflows/multiplatform_library_artifactory.yml@v1.5.2
+    uses: UbiqueInnovation/actions-android/.github/workflows/multiplatform_library_artifactory.yml@v1.5.8
     with:
       libModule: 'lib'
     secrets:

@@ -14,6 +14,12 @@ class AcceptLanguage private constructor(val languageProvider: () -> String) {
 	 * Plugin to set the Accept-Language header for all requests.
 	 *
 	 * Configured by setting [language][Config.language] for a fixed value or [languageProvider][Config.languageProvider] for a dynamic value.
+	 *
+	 *     HttpClient(...) {
+	 *         install(AcceptLanguage) {
+	 *             language = "de"
+	 *         }
+	 *     }
 	 */
 	companion object Plugin : HttpClientPlugin<Config, AcceptLanguage> {
 
