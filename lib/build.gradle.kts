@@ -39,6 +39,7 @@ kotlin {
 		commonMain.dependencies {
 			implementation(libs.kotlinx.coroutines)
 			implementation(libs.kotlinx.datetime)
+			implementation(libs.kotlinx.atomicfu.dependency)
 			api(libs.kotlinx.serialization)
 			api(libs.ktor.client.core)
 			api(libs.ktor.client.content.negotiation)
