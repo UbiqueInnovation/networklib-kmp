@@ -10,6 +10,8 @@ val HttpHeaders.XAmzMetaNextRefresh get() = "X-Amz-Meta-Next-Refresh"
 val HttpHeaders.XMsMetaNextrefresh get() = "X-MS-Meta-Nextrefresh"
 val HttpHeaders.XAmzMetaBackoff get() = "X-Amz-Meta-Backoff"
 
+val HttpHeaders.XUbiquache get() = "X-Ubiquache"
+
 class CacheControl {
 	companion object {
 		const val NO_CACHE = "no-cache"

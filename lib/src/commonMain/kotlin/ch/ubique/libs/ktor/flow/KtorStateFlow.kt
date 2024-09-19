@@ -1,6 +1,7 @@
 package ch.ubique.libs.ktor.flow
 
 import ch.ubique.libs.ktor.CacheControl
+import ch.ubique.libs.ktor.XUbiquache
 import ch.ubique.libs.ktor.cache.extensions.backoff
 import ch.ubique.libs.ktor.cache.extensions.expiresDate
 import ch.ubique.libs.ktor.cache.extensions.nextRefreshDate
@@ -10,6 +11,7 @@ import ch.ubique.libs.ktor.throwIfNotSuccessful
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.statement.HttpResponse
+import io.ktor.http.HttpHeaders
 import io.ktor.util.reflect.TypeInfo
 import io.ktor.util.reflect.typeInfo
 import io.ktor.utils.io.errors.IOException
@@ -118,6 +120,11 @@ private suspend fun <T> KtorStateFlowImpl<RequestState<T>>.loadAndWait(
 	defaultRefreshBackoff: Long,
 ): Boolean {
 	val response = request(cacheControl)
+	if (cacheControl == CacheControl.ONLY_IF_CACHED) {
+		if (response.headers[HttpHeaders.XUbiquache]?.contains(CacheControl.ONLY_IF_CACHED) != true) {
+			throw IllegalStateException("KtorStateFlow requires the Ubiquache plugin to be installed")
+		}
+	}
 	response.throwIfNotSuccessful()
 	emit(Result(response.body(typeInfo)))
 	val nextRefresh = response.nextRefreshDate() ?: response.expiresDate()

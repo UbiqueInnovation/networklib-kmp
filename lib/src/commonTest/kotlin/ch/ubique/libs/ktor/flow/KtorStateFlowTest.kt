@@ -47,4 +47,33 @@ class KtorStateFlowTest {
 		assertEquals(1, mockEngine.responseHistory.size)
 	}
 
+	@Test
+	fun `Ubiquache not applied`() = runTest {
+		val mockEngine = MockEngine { request ->
+			respond(
+				content = ByteReadChannel("body"),
+				status = HttpStatusCode.OK
+			)
+		}
+
+		val client = HttpClient(mockEngine)
+
+		val stateFlow = ktorStateFlow<String> { cacheControl ->
+			client.get("http://localhost/") {
+				cacheControl(cacheControl)
+			}
+		}
+
+		stateFlow.test {
+			val loading = awaitItem()
+			assertIs<RequestState.Loading>(loading)
+
+			val error = awaitItem()
+			assertIs<RequestState.Error>(error)
+			assertIs<IllegalStateException>(error.exception)
+		}
+
+		assertEquals(1, mockEngine.responseHistory.size)
+	}
+
 }

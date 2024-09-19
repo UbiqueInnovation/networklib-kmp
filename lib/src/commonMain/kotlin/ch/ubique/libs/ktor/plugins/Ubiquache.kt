@@ -1,6 +1,7 @@
 package ch.ubique.libs.ktor.plugins
 
 import ch.ubique.libs.ktor.CacheControl
+import ch.ubique.libs.ktor.XUbiquache
 import io.ktor.client.HttpClient
 import io.ktor.client.call.HttpClientCall
 import io.ktor.client.plugins.HttpClientPlugin
@@ -70,7 +71,7 @@ class Ubiquache private constructor(val name: String) {
 			val response = HttpResponseData(
 				statusCode = HttpStatusCode.GatewayTimeout, //developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control#other
 				requestTime = GMTDate(),
-				headers = Headers.Empty,
+				headers = headersOf(HttpHeaders.XUbiquache, CacheControl.ONLY_IF_CACHED),
 				version = HttpProtocolVersion.HTTP_1_1,
 				body = ByteReadChannel(ByteArray(0)),
 				callContext = request.executionContext
