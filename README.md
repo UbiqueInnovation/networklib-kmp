@@ -136,6 +136,24 @@ fun stateflow(exampleId: String) = ktorStateFlow<MyModel> { cacheControl ->
 ### AcceptLanguage Plugin
 HTTP client plugin to add the Accept-Language HTTP header. Either with a fixed language code, or a system dependent language list.
 
+```kotlin
+val client = HttpClient() {
+   install(AcceptLanguage) {
+      language = "de" // static ...
+      languageProvider = { "de" } // ... or callback
+   }
+}
+```
+
+### AppUserAgent Plugin
+HTTP client plugin to add the User-Agent HTTP header, containing basic system and app information.
+
+```kotlin
+val client = HttpClient() {
+	AppUserAgent()
+}
+```
+
 ---
 
 ## Development & Testing
