@@ -6,7 +6,7 @@ actual object AppUserAgentProvider {
 
 	init {
 		val appIdentifier = platform.Foundation.NSBundle.mainBundle.infoDictionary?.get("CFBundleIdentifier")
-		val appVersionCode = platform.Foundation.NSBundle.mainBundle.infoDictionary?.get("CFBundleVersion")
+		val appVersionCode = platform.Foundation.NSBundle.mainBundle.infoDictionary?.get("CFBundleShortVersionString")
 		val systemVersion = platform.UIKit.UIDevice.currentDevice.systemVersion
 		userAgentString = "iOS/$systemVersion $appIdentifier/$appVersionCode"
 	}
