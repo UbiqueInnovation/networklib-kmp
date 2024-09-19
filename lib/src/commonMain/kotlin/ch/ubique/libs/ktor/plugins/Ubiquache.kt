@@ -2,6 +2,8 @@ package ch.ubique.libs.ktor.plugins
 
 import ch.ubique.libs.ktor.CacheControl
 import ch.ubique.libs.ktor.XUbiquache
+import ch.ubique.libs.ktor.cache.db.CacheDatabaseDriverFactory
+import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.call.HttpClientCall
 import io.ktor.client.plugins.HttpClientPlugin
@@ -43,7 +45,7 @@ class Ubiquache private constructor(val name: String) {
 		}
 
 		override fun install(plugin: Ubiquache, scope: HttpClient) {
-			// TODO: NetworkCacheDatabase(CacheDatabaseDriverFactory().createDriver(plugin.name))
+			val db = NetworkCacheDatabase(CacheDatabaseDriverFactory().createDriver(plugin.name))
 
 			val CachePhase = PipelinePhase("Ubiquache")
 			scope.sendPipeline.insertPhaseAfter(HttpSendPipeline.State, CachePhase)

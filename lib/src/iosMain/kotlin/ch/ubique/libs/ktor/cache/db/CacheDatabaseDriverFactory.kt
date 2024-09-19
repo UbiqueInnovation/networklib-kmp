@@ -4,7 +4,7 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import co.touchlab.sqliter.DatabaseConfiguration
 
-actual class CacheDatabaseDriverFactory actual constructor() {
+internal actual class CacheDatabaseDriverFactory actual constructor() {
 
 	actual fun createDriver(cacheName: String): SqlDriver {
 		val dir = TODO("cacheDir + '/' + cacheName + '/'")

@@ -4,7 +4,7 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import java.io.File
 
-actual class CacheDatabaseDriverFactory actual constructor() {
+internal actual class CacheDatabaseDriverFactory actual constructor() {
 
 	actual fun createDriver(cacheName: String): SqlDriver {
 		val context = requireNotNull(Cache.applicationContext) { "Cache.applicationContext not initialized" }
