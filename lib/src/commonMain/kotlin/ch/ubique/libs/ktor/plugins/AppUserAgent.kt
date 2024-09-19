@@ -4,7 +4,7 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.UserAgent
 
 /**
- * Installs the [UserAgent] plugin with a browser-like user agent.
+ * Installs the [UserAgent] plugin with a system and app identifier.
  */
 fun HttpClientConfig<*>.AppUserAgent() {
 	install(UserAgent) {

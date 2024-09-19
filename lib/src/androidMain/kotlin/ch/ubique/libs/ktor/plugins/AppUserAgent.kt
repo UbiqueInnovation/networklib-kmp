@@ -8,9 +8,13 @@ actual object AppUserAgentProvider {
 	private var userAgentString: String? = null
 
 	fun init(context: Context) {
-		val packageName = context.packageName
-		val versionCode = context.packageManager.getPackageInfo(packageName, 0).versionCode
-		userAgentString = "Android/${Build.VERSION.SDK_INT} $packageName/$versionCode"
+		val appPackageName = context.packageName
+		@Suppress("DEPRECATION")
+		val appVersionCode = context.packageManager.getPackageInfo(appPackageName, 0).let {
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) it.longVersionCode else it.versionCode
+		}
+		val systemVersion = Build.VERSION.SDK_INT
+		userAgentString = "Android/$systemVersion $appPackageName/$appVersionCode"
 	}
 
 	actual fun getUserAgentString(): String {
