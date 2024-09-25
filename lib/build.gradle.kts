@@ -11,6 +11,8 @@ plugins {
 kotlin {
 	jvmToolchain(17)
 
+	jvm()
+
 	androidTarget {
 		compilations.all {
 			kotlinOptions {
@@ -56,10 +58,16 @@ kotlin {
 		}
 		androidMain.dependencies {
 			implementation(libs.sqldelight.android.driver)
+			implementation(libs.slf4j.nop)
 		}
 		iosMain.dependencies {
 			implementation(libs.sqldelight.native.driver)
 		}
+		jvmMain.dependencies {
+			implementation(libs.sqldelight.sqlite.driver)
+			implementation(libs.slf4j.nop)
+		}
+		jvmTest
 	}
 
 	targets.all {
@@ -84,6 +92,13 @@ sqldelight {
 		create("NetworkCacheDatabase") {
 			packageName.set("ch.ubique.libs.ktor.cache.db")
 		}
+	}
+}
+
+tasks.withType(Test::class) {
+	testLogging {
+		setEvents(listOf("standardOut", "passed", "skipped", "failed"))
+		exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
 	}
 }
 
