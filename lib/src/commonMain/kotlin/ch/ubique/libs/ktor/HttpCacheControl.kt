@@ -1,5 +1,7 @@
 package ch.ubique.libs.ktor
 
+import io.ktor.client.utils.CacheControl
+import io.ktor.http.HeaderValue
 import io.ktor.http.HttpHeaders
 
 val HttpHeaders.XBestBefore get() = "X-Best-Before"
@@ -12,10 +14,8 @@ val HttpHeaders.XAmzMetaBackoff get() = "X-Amz-Meta-Backoff"
 
 val HttpHeaders.XUbiquache get() = "X-Ubiquache"
 
-class CacheControl {
-	companion object {
-		const val NO_CACHE = "no-cache"
-		const val NO_STORE = "no-store"
-		const val ONLY_IF_CACHED = "only-if-cached"
-	}
+object CacheControlValue {
+	val NO_CACHE = HeaderValue(CacheControl.NO_CACHE)
+	val NO_STORE = HeaderValue(CacheControl.NO_STORE)
+	val ONLY_IF_CACHED = HeaderValue(CacheControl.ONLY_IF_CACHED)
 }

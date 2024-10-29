@@ -15,6 +15,9 @@ save:
 INSERT OR REPLACE INTO cacheindex(tag, url, lastaccess, refresh, expire, etag, lastmod, size)
 VALUES(?, ?, ?, ?, ?, ?, ?, ?);
 
+update:
+UPDATE cacheindex SET lastaccess=?, refresh=?, expire=?, etag=?, lastmod=?, size=? WHERE tag=?;
+
 get:
 SELECT * FROM cacheindex WHERE tag = ?;
 

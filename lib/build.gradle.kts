@@ -44,6 +44,7 @@ kotlin {
 			implementation(libs.kotlinx.atomicfu.dependency)
 			api(libs.kotlinx.serialization)
 			api(libs.ktor.client.core)
+			api(libs.ktor.client.utils)
 			api(libs.ktor.client.content.negotiation)
 			api(libs.ktor.client.auth)
 			api(libs.ktor.serialization.kotlinx.json)
@@ -85,7 +86,7 @@ android {
 	namespace = "ch.ubique.libs.ktor"
 	compileSdk = 34
 	defaultConfig {
-		minSdk = 26
+		minSdk = 23
 	}
 }
 
