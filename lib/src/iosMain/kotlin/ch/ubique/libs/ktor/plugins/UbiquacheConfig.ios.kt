@@ -15,7 +15,7 @@ actual object UbiquacheConfig {
 
 	internal actual fun getCacheDir(cacheName: String): Path {
 		val cacheDirectory: String = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first().toString()
-		return cacheDirectory.toPath() / cacheName
+		return Path(cacheDirectory, cacheName)
 	}
 
 	internal actual fun createDriver(cacheDir: Path): SqlDriver {

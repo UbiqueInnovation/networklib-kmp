@@ -6,7 +6,6 @@ import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import java.io.File
 
 actual object UbiquacheConfig {
 
@@ -21,7 +20,7 @@ actual object UbiquacheConfig {
 	}
 
 	internal actual fun getCacheDir(cacheName: String): Path {
-		return File(requireContext().cacheDir, cacheName).toOkioPath()
+		return Path(requireContext().cacheDir.path, cacheName)
 	}
 
 	internal actual fun createDriver(cacheDir: Path): SqlDriver {
@@ -29,7 +28,7 @@ actual object UbiquacheConfig {
 		return AndroidSqliteDriver(
 			schema = NetworkCacheDatabase.Schema,
 			context = requireContext(),
-			name = (cacheDir / "cache.db").toString(),
+			name = Path(cacheDir, "cache.db").toString(),
 		)
 	}
 

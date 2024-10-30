@@ -11,9 +11,9 @@ import kotlinx.coroutines.runBlocking
 /**
  * Executes an [HttpClient]'s GET request intended for the [MockEngine] returning the response.
  */
-inline fun HttpClient.getMockResponseBlocking(
+fun HttpClient.getMockResponseBlocking(
 	urlString: String = "http://localhost/",
-	noinline block: HttpRequestBuilder.() -> Unit = {},
+	block: HttpRequestBuilder.() -> Unit = {},
 ): HttpResponse = runBlocking {
 	get(urlString, block)
 }
@@ -21,9 +21,9 @@ inline fun HttpClient.getMockResponseBlocking(
 /**
  * Executes an [HttpClient]'s GET request intended for the [MockEngine] returning the response as a String.
  */
-inline fun HttpClient.getMockStringBlocking(
+fun HttpClient.getMockStringBlocking(
 	urlString: String = "http://localhost/",
-	noinline block: HttpRequestBuilder.() -> Unit = {},
+	block: HttpRequestBuilder.() -> Unit = {},
 ): String = runBlocking {
 	get(urlString, block).bodyAsText()
 }
