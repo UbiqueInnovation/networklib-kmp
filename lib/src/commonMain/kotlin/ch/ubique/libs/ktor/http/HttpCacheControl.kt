@@ -1,4 +1,4 @@
-package ch.ubique.libs.ktor
+package ch.ubique.libs.ktor.http
 
 import io.ktor.client.utils.CacheControl
 import io.ktor.http.HeaderValue

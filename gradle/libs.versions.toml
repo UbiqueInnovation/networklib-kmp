@@ -1,17 +1,17 @@
 [versions]
 agp = "8.2.2"
-kotlin = "1.9.23"
-kotlinx-coroutines = "1.8.1"
-kotlinx-datetime = "0.5.0"
-kotlinx-serialization = "1.6.3"
+kotlin = "2.0.20"
+kotlinx-coroutines = "1.9.0"
+kotlinx-datetime = "0.6.1"
+kotlinx-serialization = "2.0.20"
+kotlinx-serialization-runtime = "1.7.3"
 kotlinx-atomicfu = "0.25.0"
-ktor = "2.3.10"
-okio = "3.9.1"
+ktor = "3.0.0"
 slf4j = "2.0.16"
 sqldelight = "2.0.2"
 parameterize = "0.2.1"
 turbine = "1.1.0"
-vanniktech-publish = "0.27.0"
+vanniktech-publish = "0.29.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -20,16 +20,13 @@ kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core",
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-atomicfu-dependency = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "kotlinx-atomicfu" }
-kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization-runtime" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
-ktor-client-utils = { module = "io.ktor:ktor-client-utils", version.ref = "ktor" }
 ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 slf4j-nop = { module = "org.slf4j:slf4j-nop", version.ref = "slf4j" }
-okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
-okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
 sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
 sqldelight-native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }

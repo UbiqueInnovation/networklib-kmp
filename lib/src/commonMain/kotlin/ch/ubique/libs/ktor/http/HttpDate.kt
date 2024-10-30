@@ -1,4 +1,4 @@
-package ch.ubique.libs.ktor
+package ch.ubique.libs.ktor.http
 
 import io.ktor.http.fromHttpToGmtDate
 import io.ktor.http.toHttpDate

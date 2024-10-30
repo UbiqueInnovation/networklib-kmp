@@ -1,6 +1,6 @@
-package ch.ubique.libs.ktor.okio
+package ch.ubique.libs.ktor.common
 
-import okio.Path
+import kotlinx.io.files.Path
 
 internal actual fun Path.freeSpace(): Long {
 	TODO("get free disk space")

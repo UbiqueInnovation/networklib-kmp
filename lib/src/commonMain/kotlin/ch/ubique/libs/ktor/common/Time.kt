@@ -1,4 +1,4 @@
-package ch.ubique.libs.ktor
+package ch.ubique.libs.ktor.common
 
 import kotlinx.datetime.Clock
 

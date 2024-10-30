@@ -1,10 +1,16 @@
 package ch.ubique.libs.ktor.cache
 
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
-import ch.ubique.libs.ktor.now
-import ch.ubique.libs.ktor.okio.*
-import okio.Path
-import okio.Source
+import ch.ubique.libs.ktor.common.*
+import ch.ubique.libs.ktor.common.exists
+import ch.ubique.libs.ktor.common.readLines
+import ch.ubique.libs.ktor.common.source
+import ch.ubique.libs.ktor.common.writeText
+import ch.ubique.libs.ktor.common.now
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.readBuffer
+import kotlinx.io.Source
+import kotlinx.io.files.Path
 
 internal class CacheHandle(
 	private val cacheTag: String,
@@ -16,14 +22,14 @@ internal class CacheHandle(
 
 	private val db = cacheMetadataDatabase.networkCacheDatabaseQueries
 
-	private var _liveCacheMetadata: CacheEntryMetadata? = null
-	private val liveCacheMetadata: CacheEntryMetadata
+	private var _liveCacheMetadata: CacheMetadata? = null
+	private val liveCacheMetadata: CacheMetadata
 		get() = _liveCacheMetadata ?: getCacheMetaData().also { _liveCacheMetadata = it }
 
-	private fun getCacheMetaData(): CacheEntryMetadata {
+	private fun getCacheMetaData(): CacheMetadata {
 		return db.get(cacheTag).executeAsOneOrNull()?.run {
-			CacheEntryMetadata(lastaccess, refresh, expire, etag, lastmod, size)
-		} ?: CacheEntryMetadata()
+			CacheMetadata(lastaccess, refresh, expire, etag, lastmod, size)
+		} ?: CacheMetadata()
 	}
 
 	fun hasValidCachedResource(): Boolean {
@@ -34,17 +40,17 @@ internal class CacheHandle(
 		return headCacheFile.exists() && bodyCacheFile.exists()
 	}
 
-	fun getCachedData(): CachedData {
+	fun getCachedData(): CacheData? {
+		if (!cachedFilesExist()) return null
 		val head = headCacheFile.readLines()
 		val body = bodyCacheFile.source()
-		val contentLength = bodyCacheFile.size()
-		return CachedData(head, body, contentLength)
+		return CacheData(head, body)
 	}
 
-	fun storeCachedData(head: String, body: Source, cacheMetadata: CacheEntryMetadata) {
+	suspend fun storeCachedData(head: String, body: ByteReadChannel, cacheMetadata: CacheMetadata) {
 		try {
 			headCacheFile.writeText(head)
-			bodyCacheFile.writeSource(body)
+			body.readBuffer().transferTo(bodyCacheFile.sink())
 			val fileSize = headCacheFile.size() + bodyCacheFile.size()
 			liveCacheMetadata.apply {
 				lastAccess = now()
@@ -63,7 +69,7 @@ internal class CacheHandle(
 		}
 	}
 
-	fun updateCacheMetadata(cacheMetadata: CacheEntryMetadata) {
+	fun updateCacheMetadata(cacheMetadata: CacheMetadata) {
 		cacheMetadata.apply {
 			db.update(lastAccess, nextRefresh, expires, etag, lastModified, size, cacheTag)
 		}
@@ -110,7 +116,7 @@ internal class CacheHandle(
  * @param lastModified (optional) HTTP Last-Modified (unix timestamp, milliseconds)
  * @param size total file size (headers and body) in bytes
  */
-internal data class CacheEntryMetadata(
+internal data class CacheMetadata(
 	var lastAccess: Long = -1,
 	var nextRefresh: Long? = null,
 	var expires: Long = -1,
@@ -119,8 +125,7 @@ internal data class CacheEntryMetadata(
 	var size: Long = -1,
 )
 
-internal data class CachedData(
+internal data class CacheData(
 	val head: List<String>,
 	val body: Source,
-	val contentLength: Long,
 )

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package ch.ubique.libs.ktor
+package ch.ubique.libs.ktor.http
 
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpProtocolVersion

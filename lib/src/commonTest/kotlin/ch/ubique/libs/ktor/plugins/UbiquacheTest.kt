@@ -1,14 +1,14 @@
 package ch.ubique.libs.ktor.plugins
 
-import ch.ubique.libs.ktor.CacheControl
 import ch.ubique.libs.ktor.getMockResponseBlocking
 import ch.ubique.libs.ktor.getMockStringBlocking
-import ch.ubique.libs.ktor.throwIfNotSuccessful
+import ch.ubique.libs.ktor.http.throwIfNotSuccessful
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.header
+import io.ktor.client.utils.CacheControl
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf

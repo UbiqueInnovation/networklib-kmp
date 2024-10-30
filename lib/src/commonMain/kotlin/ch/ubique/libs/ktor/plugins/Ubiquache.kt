@@ -1,14 +1,14 @@
 package ch.ubique.libs.ktor.plugins
 
-import ch.ubique.libs.ktor.CacheControlValue
-import ch.ubique.libs.ktor.XUbiquache
+import ch.ubique.libs.ktor.cache.CacheHandle
 import ch.ubique.libs.ktor.cache.CacheManager
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
+import ch.ubique.libs.ktor.http.CacheControlValue
+import ch.ubique.libs.ktor.http.XUbiquache
+import ch.ubique.libs.ktor.http.toHttpRequestData
 import io.ktor.client.HttpClient
 import io.ktor.client.call.HttpClientCall
 import io.ktor.client.plugins.HttpClientPlugin
-import io.ktor.client.plugins.cache.InvalidCacheStateException
-import io.ktor.client.plugins.cache.storage.createResponse
 import io.ktor.client.request.*
 import io.ktor.client.statement.HttpReceivePipeline
 import io.ktor.client.statement.HttpResponse
@@ -16,12 +16,12 @@ import io.ktor.client.statement.request
 import io.ktor.http.*
 import io.ktor.http.content.OutgoingContent
 import io.ktor.util.AttributeKey
-import io.ktor.util.InternalAPI
-import io.ktor.util.KtorDsl
 import io.ktor.util.date.GMTDate
 import io.ktor.util.pipeline.PipelineContext
 import io.ktor.util.pipeline.PipelinePhase
 import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.InternalAPI
+import io.ktor.utils.io.KtorDsl
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.Job
 
@@ -40,6 +40,7 @@ class Ubiquache private constructor(val name: String) {
 
 		override val key: AttributeKey<Ubiquache> = AttributeKey("Ubiquache")
 
+		private val attributeKeyCacheHandle = AttributeKey<CacheHandle>("CacheHandle")
 		private val attributeKeyUseCacheOnFailure = AttributeKey<Boolean>("UseCacheOnFailure")
 
 		override fun prepare(block: Config.() -> Unit): Ubiquache {
@@ -64,13 +65,15 @@ class Ubiquache private constructor(val name: String) {
 				if (content !is OutgoingContent.NoContent) return@intercept
 				if (context.method != HttpMethod.Get || !context.url.protocol.canStore()) return@intercept
 
-				val cacheHandle = cacheManager.obtainCacheHandle(context)
-				val cacheControl = parseHeaderValue(context.headers[HttpHeaders.CacheControl])
+				val requestData = context.build()
+				val cacheHandle = cacheManager.obtainCacheHandle(requestData)
+				context.attributes.put(attributeKeyCacheHandle, cacheHandle)
 
+				val cacheControl = parseHeaderValue(context.headers[HttpHeaders.CacheControl])
 				if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
 					// force cached response, do not make network request
 					if (cacheHandle.hasValidCachedResource()) {
-						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, context)
+						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
 						proceedWithCache(scope, cachedResponse.call)
 					} else {
 						proceedWithCachedResourceNotFound(scope)
@@ -90,42 +93,45 @@ class Ubiquache private constructor(val name: String) {
 					proceedWith(context)
 				} else if (cacheHandle.hasValidCachedResource()) {
 					// cache hit
-					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, context)
+					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
 					proceedWithCache(scope, cachedResponse.call)
 				} else {
 					context.withCacheHeader(cacheHandle)
 					proceedWith(context)
 				}
+
+				// TODO: check where to handle exception on request
 			}
 
 			scope.receivePipeline.intercept(HttpReceivePipeline.State) { response ->
-				if (response.call.request.method != HttpMethod.Get || !response.call.request.url.protocol.canStore()) return@intercept
-
-				val useCacheOnFailure = response.call.request.attributes.getOrNull(attributeKeyUseCacheOnFailure) == true
+				val requestAttributes = response.request.attributes
+				val cacheHandle = requestAttributes.getOrNull(attributeKeyCacheHandle) ?: return@intercept
+				val useCacheOnFailure = requestAttributes.getOrNull(attributeKeyUseCacheOnFailure) == true
 
 				if (useCacheOnFailure && response.status.value in 500..599) {
+					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, response.request.toHttpRequestData())
 					response.complete()
-					val responseFromCache = plugin.findAndRefresh(response.call.request, response)
-						?: throw InvalidCacheStateException(response.call.request.url)
-					proceedWith(responseFromCache)
+					proceedWith(cachedResponse)
 					return@intercept
 				}
 
-				if (response.status == HttpStatusCode.NotModified) {
+				if (response.status == HttpStatusCode.NotModified && response.request.expectNotModified()) {
+					cacheManager.updateCacheHeaders(cacheHandle, response)
+					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, response.request.toHttpRequestData())
 					response.complete()
-					val responseFromCache = plugin.findAndRefresh(response.call.request, response)
-						?: throw InvalidCacheStateException(response.call.request.url)
-					proceedWith(responseFromCache)
+					proceedWith(cachedResponse)
 					return@intercept
 				}
 
 				if (response.isCacheable()) {
-					val cachedData = plugin.cacheResponse(response)
-					if (cachedData != null) {
-						val reusableResponse = cachedData.createResponse(scope, response.request, response.coroutineContext)
-						proceedWith(reusableResponse)
+					val cachedResponse = cacheManager.storeCacheableResponse(cacheHandle, response)
+					if (cachedResponse != null) {
+						//val reusableResponse = cachedData.createResponse(scope, response.request, response.coroutineContext)
+						proceedWith(cachedResponse)
 						return@intercept
 					}
+				} else {
+					cacheHandle.removeFromCache()
 				}
 			}
 		}
@@ -138,7 +144,6 @@ class Ubiquache private constructor(val name: String) {
 			proceedWith(cachedCall)
 		}
 
-		@OptIn(InternalAPI::class)
 		private suspend fun PipelineContext<Any, HttpRequestBuilder>.proceedWithCachedResourceNotFound(scope: HttpClient) {
 			finish()
 			val request = context.build()
@@ -150,6 +155,7 @@ class Ubiquache private constructor(val name: String) {
 				body = ByteReadChannel(ByteArray(0)),
 				callContext = request.executionContext
 			)
+			@OptIn(InternalAPI::class)
 			val call = HttpClientCall(scope, request, response)
 			proceedWith(call)
 		}
@@ -165,15 +171,25 @@ class Ubiquache private constructor(val name: String) {
 			val responseCacheControl = parseHeaderValue(headers[HttpHeaders.CacheControl])
 			if (CacheControlValue.NO_CACHE in responseCacheControl) return false
 			if (CacheControlValue.NO_STORE in responseCacheControl) return false
+
+			return true
 		}
 
-		private fun HttpRequestBuilder.withCacheHeader(cacheHandle: Any) {
-			cacheHandle.headers[HttpHeaders.ETag]?.let { etag ->
+		private fun HttpRequestBuilder.withCacheHeader(cacheHandle: CacheHandle) {
+			val etag = cacheHandle.getETag()
+			if (etag != null) {
 				header(HttpHeaders.IfNoneMatch, etag)
+				return
 			}
-			cacheHandle.headers[HttpHeaders.LastModified]?.let { lastModified ->
+			val lastModified = cacheHandle.getLastModified()
+			if (lastModified > 0) {
 				header(HttpHeaders.IfModifiedSince, lastModified)
+				return
 			}
+		}
+
+		private fun HttpRequest.expectNotModified(): Boolean {
+			return headers.contains(HttpHeaders.IfNoneMatch) || headers.contains(HttpHeaders.IfModifiedSince)
 		}
 
 		private fun HttpResponse.complete() {

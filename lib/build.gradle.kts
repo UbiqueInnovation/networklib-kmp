@@ -44,11 +44,9 @@ kotlin {
 			implementation(libs.kotlinx.atomicfu.dependency)
 			api(libs.kotlinx.serialization)
 			api(libs.ktor.client.core)
-			api(libs.ktor.client.utils)
 			api(libs.ktor.client.content.negotiation)
 			api(libs.ktor.client.auth)
 			api(libs.ktor.serialization.kotlinx.json)
-			implementation(libs.okio)
 			implementation(libs.sqldelight.runtime)
 		}
 		commonTest.dependencies {
@@ -57,7 +55,6 @@ kotlin {
 			implementation(libs.turbine)
 			implementation(libs.parameterize)
 			implementation(libs.ktor.client.mock)
-			implementation(libs.okio.fakefilesystem)
 		}
 		androidMain.dependencies {
 			implementation(libs.sqldelight.android.driver)

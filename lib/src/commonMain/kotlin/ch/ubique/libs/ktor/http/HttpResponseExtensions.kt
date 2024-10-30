@@ -1,4 +1,4 @@
-package ch.ubique.libs.ktor
+package ch.ubique.libs.ktor.http
 
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.RedirectResponseException

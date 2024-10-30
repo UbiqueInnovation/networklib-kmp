@@ -1,7 +1,7 @@
 package ch.ubique.libs.ktor.plugins
 
 import app.cash.sqldelight.db.SqlDriver
-import okio.Path
+import kotlinx.io.files.Path
 
 expect object UbiquacheConfig {
 

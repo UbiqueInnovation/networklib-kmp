@@ -1,6 +1,7 @@
 package ch.ubique.libs.ktor.cache.extensions
 
-import ch.ubique.libs.ktor.*
+import ch.ubique.libs.ktor.common.now
+import ch.ubique.libs.ktor.http.*
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
