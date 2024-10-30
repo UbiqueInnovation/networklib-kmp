@@ -85,19 +85,17 @@ class Ubiquache private constructor(val name: String) {
 
 				if (CacheControlValue.NO_CACHE in cacheControl) {
 					// request as-is
-					proceedWith(context)
 				} else if (cacheHandle.shouldBeRefreshedButIsNotExpired()) {
 					// valid resource in cache, but should be refreshed, fallback to cached resource on network error
 					context.attributes.put(attributeKeyUseCacheOnFailure, true)
 					context.withCacheHeader(cacheHandle)
-					proceedWith(context)
 				} else if (cacheHandle.hasValidCachedResource()) {
 					// cache hit
 					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
 					proceedWithCache(scope, cachedResponse.call)
+					return@intercept
 				} else {
 					context.withCacheHeader(cacheHandle)
-					proceedWith(context)
 				}
 
 				// TODO: check where to handle exception on request
