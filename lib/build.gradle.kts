@@ -55,6 +55,7 @@ kotlin {
 			implementation(libs.turbine)
 			implementation(libs.parameterize)
 			implementation(libs.ktor.client.mock)
+			implementation(libs.ktor.client.cio)
 		}
 		androidMain.dependencies {
 			implementation(libs.sqldelight.android.driver)

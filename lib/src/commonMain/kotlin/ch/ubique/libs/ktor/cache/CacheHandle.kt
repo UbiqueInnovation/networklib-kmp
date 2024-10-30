@@ -2,11 +2,6 @@ package ch.ubique.libs.ktor.cache
 
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
 import ch.ubique.libs.ktor.common.*
-import ch.ubique.libs.ktor.common.exists
-import ch.ubique.libs.ktor.common.readLines
-import ch.ubique.libs.ktor.common.source
-import ch.ubique.libs.ktor.common.writeText
-import ch.ubique.libs.ktor.common.now
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readBuffer
 import kotlinx.io.Source
@@ -71,7 +66,7 @@ internal class CacheHandle(
 
 	fun updateCacheMetadata(cacheMetadata: CacheMetadata) {
 		cacheMetadata.apply {
-			db.update(lastAccess, nextRefresh, expires, etag, lastModified, size, cacheTag)
+			db.update(lastAccess, nextRefresh, expires, etag, lastModified, cacheTag)
 		}
 	}
 

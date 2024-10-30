@@ -6,6 +6,7 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.takeFrom
 import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.Url
 import io.ktor.http.content.OutgoingContent
@@ -26,4 +27,8 @@ internal fun HttpRequestData.toHttpRequest(): HttpRequest {
 		override val content: OutgoingContent = data.body
 		override val headers: Headers = data.headers
 	}
+}
+
+internal fun HttpRequest.expectNotModified(): Boolean {
+	return headers.contains(HttpHeaders.IfNoneMatch) || headers.contains(HttpHeaders.IfModifiedSince)
 }

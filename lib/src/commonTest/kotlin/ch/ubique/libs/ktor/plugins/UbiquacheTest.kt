@@ -4,9 +4,11 @@ import ch.ubique.libs.ktor.getMockResponseBlocking
 import ch.ubique.libs.ktor.getMockStringBlocking
 import ch.ubique.libs.ktor.http.throwIfNotSuccessful
 import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.ResponseException
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.utils.CacheControl
 import io.ktor.http.HttpHeaders
@@ -78,6 +80,17 @@ class UbiquacheTest {
 
 		assertFailsWith(ResponseException::class) {
 			runBlocking { result.throwIfNotSuccessful() }
+		}
+	}
+
+	@Test
+	fun `network-exception`() {
+		val client = HttpClient(CIO) {
+			install(Ubiquache)
+		}
+
+		assertFailsWith(Exception::class) {
+			runBlocking { client.get("https://s2pqrsr865bsb5.com") }
 		}
 	}
 
