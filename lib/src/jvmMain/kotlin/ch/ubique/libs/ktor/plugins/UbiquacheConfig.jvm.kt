@@ -5,10 +5,11 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
 import kotlinx.io.files.Path
 
+// only used to run tests on JVM
 actual object UbiquacheConfig {
 
 	internal actual fun getCacheDir(cacheName: String): Path {
-		return Path(".")
+		return Path(cacheName)
 	}
 
 	internal actual fun createDriver(cacheDir: Path): SqlDriver {

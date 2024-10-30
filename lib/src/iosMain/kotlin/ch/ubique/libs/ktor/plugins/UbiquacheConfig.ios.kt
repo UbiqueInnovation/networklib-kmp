@@ -4,7 +4,6 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
 import co.touchlab.sqliter.DatabaseConfiguration
-import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import platform.Foundation.NSCachesDirectory

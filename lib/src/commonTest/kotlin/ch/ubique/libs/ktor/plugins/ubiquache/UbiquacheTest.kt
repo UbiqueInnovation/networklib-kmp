@@ -1,8 +1,9 @@
-package ch.ubique.libs.ktor.plugins
+package ch.ubique.libs.ktor.plugins.ubiquache
 
 import ch.ubique.libs.ktor.getMockResponseBlocking
 import ch.ubique.libs.ktor.getMockStringBlocking
 import ch.ubique.libs.ktor.http.throwIfNotSuccessful
+import ch.ubique.libs.ktor.plugins.Ubiquache
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.engine.mock.MockEngine
