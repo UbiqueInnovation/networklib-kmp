@@ -3,6 +3,7 @@ package ch.ubique.libs.ktor.plugins
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
+import ch.ubique.libs.ktor.common.ensureDirectory
 import co.touchlab.sqliter.DatabaseConfiguration
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
@@ -18,7 +19,7 @@ actual object UbiquacheConfig {
 	}
 
 	internal actual fun createDriver(cacheDir: Path): SqlDriver {
-		SystemFileSystem.createDirectories(cacheDir)
+		cacheDir.ensureDirectory()
 		return NativeSqliteDriver(
 			schema = NetworkCacheDatabase.Schema,
 			name = "cache.db",

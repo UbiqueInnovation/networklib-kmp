@@ -15,10 +15,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headers
 import io.ktor.util.date.GMTDate
 import kotlinx.io.files.Path
-import kotlin.test.Ignore
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class CacheErrorTest {
 
@@ -43,7 +40,7 @@ class CacheErrorTest {
 						header(HttpHeaders.ContentType, "text/plain")
 					}
 				)
-				else -> error("Unexpected request number: $number")
+				else -> fail("Unexpected request number: $number")
 			}
 		}.testUbiquache { client ->
 			run {

@@ -12,6 +12,7 @@ import io.ktor.http.headers
 import io.ktor.util.date.GMTDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.fail
 
 class CacheControlTest {
 
@@ -56,7 +57,7 @@ class CacheControlTest {
 						header(HttpHeaders.ContentType, "text/plain")
 					}
 				)
-				else -> error("Unexpected request number: $number")
+				else -> fail("Unexpected request number: $number")
 			}
 		}.testUbiquache { client ->
 			run {
@@ -104,7 +105,7 @@ class CacheControlTest {
 						header(HttpHeaders.ContentType, "text/plain")
 					}
 				)
-				else -> error("Unexpected request number: $number")
+				else -> fail("Unexpected request number: $number")
 			}
 		}.testUbiquache { client ->
 			run {

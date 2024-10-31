@@ -26,7 +26,7 @@ fun HttpResponse.expiresDate(): Long? {
 		?: headers[HttpHeaders.XAmzMetaBestBefore]?.let { it.toHttpDate()?.timestamp }
 		?: headers[HttpHeaders.XMsMetaBestbefore]?.let { it.toHttpDate()?.timestamp }
 		?: headers[HttpHeaders.Expires]?.let { it.toHttpDate()?.timestamp }
-		?: cacheControl().maxAge()?.takeIf { it > 0 }?.let { now() + it * 1000L }
+		?: cacheControl().maxAge()?.takeIf { it > 0 }?.plus(now())
 }
 
 /**
