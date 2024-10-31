@@ -3,18 +3,21 @@ package ch.ubique.libs.ktor.plugins
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
+import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 
-// only used to run tests on JVM
 actual object UbiquacheConfig {
 
 	internal actual fun getCacheDir(cacheName: String): Path {
-		return Path(cacheName)
+		val tempDir = System.getProperty("java.io.tmpdir")
+		return Path(tempDir, cacheName)
 	}
 
 	internal actual fun createDriver(cacheDir: Path): SqlDriver {
-		val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
-		NetworkCacheDatabase.Schema.create(driver)
+		SystemFileSystem.createDirectories(cacheDir)
+		val driver = JdbcSqliteDriver("jdbc:sqlite:$cacheDir/cache.db")
+		runBlocking { NetworkCacheDatabase.Schema.create(driver).await() }
 		return driver
 	}
 

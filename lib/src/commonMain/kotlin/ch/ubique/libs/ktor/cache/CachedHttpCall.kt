@@ -46,4 +46,11 @@ private class CachedHttpResponse(
 
 	@InternalAPI
 	override val rawContent: ByteReadChannel = ByteReadChannel(body)
+
+	init {
+		context.invokeOnCompletion {
+			// TODO: close() doesn't seem have any effect, source file is still open
+			body.close()
+		}
+	}
 }

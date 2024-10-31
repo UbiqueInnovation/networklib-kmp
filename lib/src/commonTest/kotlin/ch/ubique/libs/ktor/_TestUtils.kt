@@ -13,7 +13,6 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HeadersBuilder
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
-import kotlinx.io.files.Path
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
@@ -36,11 +35,12 @@ inline fun HeadersBuilder.header(name: String, value: String) {
 /**
  * Create a [MockEngine] with a given block of code to handle requests and execute the given block of code.
  */
+@OptIn(ExperimentalStdlibApi::class)
 internal inline fun MockEngine.testUbiquache(block: MockEngine.(client: HttpClient) -> Unit) {
 	val client = HttpClient(this) {
 		install(Ubiquache) {
-			val id = Clock.System.now().toEpochMilliseconds().toString() + "." + Random.nextUInt()
-			directory = Path("./build/test-ubiquache/$id")
+			val id = Clock.System.now().toEpochMilliseconds().toUInt().toHexString() + "-" + Random.nextUInt().toHexString()
+			name = "ubiquache-test-$id"
 		}
 	}
 	block(this, client)

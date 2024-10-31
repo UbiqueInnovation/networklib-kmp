@@ -22,9 +22,8 @@ import io.ktor.util.pipeline.PipelinePhase
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.KtorDsl
-import kotlinx.io.files.Path
 
-class Ubiquache private constructor(val name: String, internal val directory: Path?) {
+class Ubiquache private constructor(val name: String) {
 
 	/**
 	 * Plugin to support disk caching with multiple levels of expiration.
@@ -46,11 +45,11 @@ class Ubiquache private constructor(val name: String, internal val directory: Pa
 			val config = Config().apply(block)
 			val name = config.name
 			require(name.matches(Regex("[A-Za-z0-9._\\-]+"))) { "Cache name must only use A-Za-z0-9._-" }
-			return Ubiquache(name, config.directory)
+			return Ubiquache(name)
 		}
 
 		override fun install(plugin: Ubiquache, scope: HttpClient) {
-			val cacheDir = plugin.directory ?: UbiquacheConfig.getCacheDir(plugin.name)
+			val cacheDir = UbiquacheConfig.getCacheDir(plugin.name)
 			val db = NetworkCacheDatabase(UbiquacheConfig.createDriver(cacheDir))
 			val cacheManager = CacheManager(cacheDir, db)
 
@@ -182,7 +181,6 @@ class Ubiquache private constructor(val name: String, internal val directory: Pa
 	@KtorDsl
 	class Config {
 		var name: String = "ubiquache"
-		internal var directory: Path? = null
 	}
 
 }

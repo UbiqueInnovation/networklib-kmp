@@ -28,7 +28,7 @@ internal fun Path.writeText(text: String) = fs.sink(this).buffered().use {
 
 internal fun Path.sink() = fs.sink(this).buffered()
 
-internal fun Path.delete() = fs.delete(this, mustExist = false)
+internal fun Path.delete() = runCatching { fs.delete(this, mustExist = false) }
 
 internal fun Path.deleteRecursively() {
 	if (fs.metadataOrNull(this)?.isDirectory == true) {
