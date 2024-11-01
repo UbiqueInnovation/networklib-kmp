@@ -7,7 +7,6 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,7 +18,7 @@ class ResponseExceptionTest {
 	fun responseException() {
 		val mockEngine = MockEngine { request ->
 			respond(
-				content = ByteReadChannel("body"),
+				content = "body",
 				status = HttpStatusCode.NotFound
 			)
 		}

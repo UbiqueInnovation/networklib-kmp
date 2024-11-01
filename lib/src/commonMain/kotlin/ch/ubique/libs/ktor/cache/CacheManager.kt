@@ -77,12 +77,12 @@ internal class CacheManager(
 		return CacheMetadata(now(), nextRefresh, expires, etag, lastModified)
 	}
 
-	fun getCachedResponse(handle: CacheHandle, client: HttpClient, request: HttpRequestData): HttpResponse {
+	fun getCachedResponse(handle: CacheHandle, client: HttpClient, request: HttpRequestData, injectHeader: Headers? = null): HttpResponse {
 		handle.updateLastAccessed()
-		return readCachedResponse(handle, client, request) ?: throw InvalidCacheStateException(request.url)
+		return readCachedResponse(handle, client, request, injectHeader) ?: throw InvalidCacheStateException(request.url)
 	}
 
-	private fun readCachedResponse(handle: CacheHandle, client: HttpClient, request: HttpRequestData): HttpResponse? {
+	private fun readCachedResponse(handle: CacheHandle, client: HttpClient, request: HttpRequestData, injectHeader: Headers? = null): HttpResponse? {
 		val (head, body) = handle.getCachedData() ?: return null
 
 		// status line
@@ -93,6 +93,9 @@ internal class CacheManager(
 			for (headerLine in head.drop(1)) {
 				val (name, value) = headerLine.split(':', limit = 2)
 				append(name.trim(), value.trim())
+			}
+			injectHeader?.let {
+				appendAll(it)
 			}
 		}
 

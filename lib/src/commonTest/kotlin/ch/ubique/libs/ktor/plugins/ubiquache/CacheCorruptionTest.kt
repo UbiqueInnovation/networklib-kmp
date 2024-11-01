@@ -17,7 +17,7 @@ import io.ktor.util.date.GMTDate
 import kotlinx.io.files.Path
 import kotlin.test.*
 
-class CacheErrorTest {
+class CacheCorruptionTest {
 
 	@Test
 	@Ignore // TODO: implement database recovery

@@ -1,6 +1,8 @@
 package ch.ubique.libs.ktor
 
+import ch.ubique.libs.ktor.common.deleteRecursively
 import ch.ubique.libs.ktor.plugins.Ubiquache
+import ch.ubique.libs.ktor.plugins.UbiquacheConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -37,13 +39,18 @@ inline fun HeadersBuilder.header(name: String, value: String) {
  */
 @OptIn(ExperimentalStdlibApi::class)
 internal inline fun MockEngine.testUbiquache(block: MockEngine.(client: HttpClient) -> Unit) {
-	val client = HttpClient(this) {
-		install(Ubiquache) {
-			val id = Clock.System.now().toEpochMilliseconds().toUInt().toHexString() + "-" + Random.nextUInt().toHexString()
-			name = "ubiquache-test-$id"
+	val testId = Clock.System.now().toEpochMilliseconds().toUInt().toHexString() + "-" + Random.nextUInt().toHexString()
+	val cacheName = "ubiquache-test-$testId"
+	try {
+		val client = HttpClient(this) {
+			install(Ubiquache) {
+				name = cacheName
+			}
 		}
+		block(this, client)
+	} finally {
+		UbiquacheConfig.getCacheDir(cacheName).deleteRecursively()
 	}
-	block(this, client)
 }
 
 /**

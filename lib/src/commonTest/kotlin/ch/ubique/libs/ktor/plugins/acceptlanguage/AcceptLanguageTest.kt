@@ -1,6 +1,7 @@
-package ch.ubique.libs.ktor.plugins
+package ch.ubique.libs.ktor.plugins.acceptlanguage
 
 import ch.ubique.libs.ktor.getMockStringBlocking
+import ch.ubique.libs.ktor.plugins.AcceptLanguage
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -14,7 +15,7 @@ import kotlin.test.assertEquals
 class AcceptLanguageTest {
 
 	@Test
-	fun `test static language`() {
+	fun staticLanguage() {
 		val mockEngine = MockEngine { request ->
 			respond(
 				content = ByteReadChannel(requireNotNull(request.headers[HttpHeaders.AcceptLanguage])),
@@ -35,7 +36,7 @@ class AcceptLanguageTest {
 	}
 
 	@Test
-	fun `test dynamic language`() {
+	fun dynamicLanguage() {
 		val mockEngine = MockEngine { request ->
 			respond(
 				content = ByteReadChannel(requireNotNull(request.headers[HttpHeaders.AcceptLanguage])),

@@ -71,7 +71,8 @@ class Ubiquache private constructor(val name: String) {
 				if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
 					// force cached response, do not make network request
 					if (cacheHandle.hasValidCachedResource()) {
-						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
+						val ubiquacheHeader = headersOf(HttpHeaders.XUbiquache, CacheControlValue.ONLY_IF_CACHED.value)
+						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, ubiquacheHeader)
 						proceedWithCache(cachedResponse.call)
 					} else {
 						proceedWithCachedResourceNotFound(scope)
@@ -172,7 +173,7 @@ class Ubiquache private constructor(val name: String) {
 			}
 			val lastModified = cacheHandle.getLastModified()
 			if (lastModified > 0) {
-				header(HttpHeaders.IfModifiedSince, lastModified)
+				header(HttpHeaders.IfModifiedSince, GMTDate(lastModified).toHttpDateString())
 				return
 			}
 		}

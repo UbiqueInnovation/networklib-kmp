@@ -2,19 +2,23 @@ package ch.ubique.libs.ktor.plugins.ubiquache
 
 import ch.ubique.libs.ktor.*
 import ch.ubique.libs.ktor.common.now
+import ch.ubique.libs.ktor.http.throwIfNotSuccessful
 import ch.ubique.libs.ktor.http.toHttpDateString
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.header
 import io.ktor.client.utils.CacheControl
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headers
 import io.ktor.util.date.GMTDate
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.fail
 
-class CacheControlTest {
+class CacheControlRequestTest {
 
 	@Test
 	fun nocache_emptyCache() {
@@ -178,6 +182,36 @@ class CacheControlTest {
 				assertEquals("bntemrbs", response.bodyAsTextBlocking())
 				assertEquals("text/plain", response.headers[HttpHeaders.ContentType])
 				assertEquals(1, requestHistory.size)
+			}
+		}
+	}
+
+	@Test
+	fun onlyIfCached() {
+		withServer { number, request ->
+			respond(
+				content = "body",
+			)
+		}.testUbiquache { client ->
+			val result = client.getMockResponseBlocking {
+				header(HttpHeaders.CacheControl, CacheControl.ONLY_IF_CACHED)
+			}
+			assertEquals(HttpStatusCode.GatewayTimeout.value, result.status.value)
+		}
+	}
+
+	@Test
+	fun onlyIfCached_throw() {
+		withServer { number, request ->
+			respond(
+				content = "body",
+			)
+		}.testUbiquache { client ->
+			val result = client.getMockResponseBlocking {
+				header(HttpHeaders.CacheControl, CacheControl.ONLY_IF_CACHED)
+			}
+			assertFailsWith(ResponseException::class) {
+				runBlocking { result.throwIfNotSuccessful() }
 			}
 		}
 	}

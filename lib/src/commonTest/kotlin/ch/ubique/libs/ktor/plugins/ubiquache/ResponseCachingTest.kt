@@ -5,16 +5,14 @@ import ch.ubique.libs.ktor.common.now
 import ch.ubique.libs.ktor.common.skipTime
 import ch.ubique.libs.ktor.http.*
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headers
 import io.ktor.util.date.GMTDate
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNull
-import kotlin.test.fail
+import kotlin.test.*
 
-class CachingResponseTest {
+class ResponseCachingTest {
 
 	private val expiresHeaders = listOf(HttpHeaders.Expires, HttpHeaders.XAmzMetaBestBefore, HttpHeaders.XMsMetaBestbefore)
 	private val nextRefreshHeaders = listOf(HttpHeaders.XNextRefresh, HttpHeaders.XAmzMetaNextRefresh, HttpHeaders.XMsMetaNextrefresh)
@@ -388,6 +386,241 @@ class CachingResponseTest {
 		}
 	}
 
-	// TODO: continue with nextRefresh_fallbackOnConnectionError()
+	@Test
+	fun nextRefresh_fallbackOnConnectionError() {
+		var	triggeredConnectionException = false
+		withServer { number, request ->
+			when (number) {
+				1 -> respond(
+					content = "drtekrtb",
+					headers = headers {
+						header(HttpHeaders.Expires, GMTDate(now() + 10000L).toHttpDateString())
+						header(HttpHeaders.XNextRefresh, GMTDate(now() + 500L).toHttpDateString())
+					}
+				)
+				2 -> {
+					triggeredConnectionException = true
+					throw SocketTimeoutException("emulate connection error")
+				}
+				else -> fail("Unexpected request number: $number")
+			}
+		}.testUbiquache { client ->
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("drtekrtb", response.bodyAsTextBlocking())
+				assertEquals(1, requestHistory.size)
+			}
+			skipTime(1000)
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("drtekrtb", response.bodyAsTextBlocking())
+				assertTrue(triggeredConnectionException)
+				assertEquals(1, requestHistory.size) // failed request doesn't count
+			}
+		}
+	}
+
+	@Test
+	fun etag_match() {
+		withServer { number, request ->
+			when (number) {
+				1 -> {
+					assertNull(request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "nvutzeud",
+						headers = headers {
+							header(HttpHeaders.ETag, "201539054")
+						}
+					)
+				}
+				2 -> {
+					assertEquals("201539054", request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "",
+						status = HttpStatusCode.NotModified,
+						headers = headers {
+							header(HttpHeaders.ETag, "201539054")
+						}
+					)
+				}
+				else -> fail("Unexpected request number: $number")
+			}
+		}.testUbiquache { client ->
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("nvutzeud", response.bodyAsTextBlocking())
+				assertEquals(1, requestHistory.size)
+			}
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("nvutzeud", response.bodyAsTextBlocking())
+				assertEquals(2, requestHistory.size)
+			}
+		}
+	}
+
+	@Test
+	fun etag_mismatch() {
+		withServer { number, request ->
+			when (number) {
+				1 -> {
+					assertNull(request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "vweouiie",
+						headers = headers {
+							header(HttpHeaders.ETag, "201539054")
+						}
+					)
+				}
+				2 -> {
+					assertEquals("201539054", request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "nowjcnoq",
+						headers = headers {
+							header(HttpHeaders.ETag, "998749477")
+						}
+					)
+				}
+				else -> fail("Unexpected request number: $number")
+			}
+		}.testUbiquache { client ->
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("vweouiie", response.bodyAsTextBlocking())
+				assertEquals(1, requestHistory.size)
+			}
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("nowjcnoq", response.bodyAsTextBlocking())
+				assertEquals(2, requestHistory.size)
+			}
+		}
+	}
+
+	@Test
+	fun lastModified_match() {
+		val lastModified = GMTDate(now()).toHttpDateString()
+		withServer { number, request ->
+			when (number) {
+				1 -> {
+					assertNull(request.headers[HttpHeaders.IfModifiedSince])
+					respond(
+						content = "tsrnksnv",
+						headers = headers {
+							header(HttpHeaders.LastModified, lastModified)
+						}
+					)
+				}
+				2 -> {
+					assertEquals(lastModified, request.headers[HttpHeaders.IfModifiedSince])
+					respond(
+						content = "",
+						status = HttpStatusCode.NotModified,
+						headers = headers {
+							header(HttpHeaders.LastModified, lastModified)
+						}
+					)
+				}
+				else -> fail("Unexpected request number: $number")
+			}
+		}.testUbiquache { client ->
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("tsrnksnv", response.bodyAsTextBlocking())
+				assertEquals(1, requestHistory.size)
+			}
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("tsrnksnv", response.bodyAsTextBlocking())
+				assertEquals(2, requestHistory.size)
+			}
+		}
+	}
+
+	@Test
+	fun lastModified_mismatch() {
+		val lastModified = GMTDate(now()).toHttpDateString()
+		withServer { number, request ->
+			when (number) {
+				1 -> {
+					assertNull(request.headers[HttpHeaders.IfModifiedSince])
+					respond(
+						content = "xoiuenro",
+						headers = headers {
+							header(HttpHeaders.LastModified, lastModified)
+						}
+					)
+				}
+				2 -> {
+					assertEquals(lastModified, request.headers[HttpHeaders.IfModifiedSince])
+					respond(
+						content = "oefoinvw",
+						headers = headers {
+							header(HttpHeaders.LastModified, lastModified)
+						}
+					)
+				}
+				else -> fail("Unexpected request number: $number")
+			}
+		}.testUbiquache { client ->
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("xoiuenro", response.bodyAsTextBlocking())
+				assertEquals(1, requestHistory.size)
+			}
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("oefoinvw", response.bodyAsTextBlocking())
+				assertEquals(2, requestHistory.size)
+			}
+		}
+	}
+
+	@Test
+	fun etag_with_expires() {
+		withServer { number, request ->
+			when (number) {
+				1 -> {
+					assertNull(request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "sgcoperj",
+						headers = headers {
+							header(HttpHeaders.ETag, "657449293")
+							header(HttpHeaders.Expires, GMTDate(now() + 2000L).toHttpDateString())
+						}
+					)
+				}
+				2 -> {
+					assertEquals("657449293", request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "",
+						status = HttpStatusCode.NotModified,
+						headers = headers {
+							header(HttpHeaders.ETag, "657449293")
+						}
+					)
+				}
+				else -> fail("Unexpected request number: $number")
+			}
+		}.testUbiquache { client ->
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("sgcoperj", response.bodyAsTextBlocking())
+				assertEquals(1, requestHistory.size)
+			}
+			skipTime(1000L)
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("sgcoperj", response.bodyAsTextBlocking())
+				assertEquals(1, requestHistory.size)
+			}
+			skipTime(9000L)
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("sgcoperj", response.bodyAsTextBlocking())
+				assertEquals(2, requestHistory.size)
+			}
+		}
+	}
 
 }
