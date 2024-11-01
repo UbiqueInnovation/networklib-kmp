@@ -49,8 +49,6 @@ jobs:
         uses: mi-kas/kover-report@v1
         if: steps.coverage.outcome == 'success'
         with:
-          path: | 
-            lib/build/reports/kover/report.xml
-            lib/build/reports/kover/reportJvm.xml
+          path: lib/build/reports/kover/reportJvm.xml
           title: Code Coverage
           update-comment: true
