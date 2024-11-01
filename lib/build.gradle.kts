@@ -6,6 +6,7 @@ plugins {
 	alias(libs.plugins.vanniktech.publish)
 	alias(libs.plugins.sqldelight)
 	alias(libs.plugins.kotlinx.atomicfu)
+	alias(libs.plugins.kotlinx.kover)
 }
 
 kotlin {
