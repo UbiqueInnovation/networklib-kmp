@@ -2,6 +2,10 @@ name: Test
 
 on: [ push ]
 
+permissions:
+  pull-requests: write
+  contents: read
+
 jobs:
   test:
     runs-on: ["self-hosted", "macOS"]
@@ -29,9 +33,8 @@ jobs:
         
       - name: Tests Report
         uses: EnricoMi/publish-unit-test-result-action/macos@v2
-        if: steps.tests.outcome == 'success'
         with:
-          check_name: 'Unit Test Results'
+          check_name: 'Test Results'
           files: lib/build/test-results/**/*.xml
         
       - name: Coverage
@@ -43,6 +46,8 @@ jobs:
         uses: mi-kas/kover-report@v1
         if: steps.coverage.outcome == 'success'
         with:
-          path: lib/build/reports/kover/reportJvm.xml
+          path: | 
+            lib/build/reports/kover/report.xml
+            lib/build/reports/kover/reportJvm.xml
           title: Code Coverage
           update-comment: true
