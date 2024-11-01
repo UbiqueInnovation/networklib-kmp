@@ -13,6 +13,7 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.client.request.get
+import io.ktor.client.request.post
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headers
 import io.ktor.util.date.GMTDate
@@ -193,6 +194,32 @@ class KtorStateFlowTest {
 
 			assertTrue(triggeredConnectionException)
 			assertEquals(0, responseHistory.size)
+		}
+	}
+
+	@Test
+	fun postRequest() = runTest {
+		withServer { number, request ->
+			respond(
+				content = "post",
+			)
+		}.testUbiquache { client ->
+			val stateFlow = ktorStateFlow<String> { cacheControl ->
+				client.post("http://test/") {
+					cacheControl(cacheControl)
+				}
+			}
+
+			stateFlow.test {
+				val loading = awaitItem()
+				assertIs<RequestState.Loading>(loading)
+
+				val result = awaitItem()
+				assertIs<RequestState.Result<String>>(result)
+				assertEquals("post", result.data)
+			}
+
+			assertEquals(1, responseHistory.size)
 		}
 	}
 

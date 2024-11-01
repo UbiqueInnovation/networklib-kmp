@@ -2,20 +2,16 @@ package ch.ubique.libs.ktor.plugins.ubiquache
 
 import ch.ubique.libs.ktor.*
 import ch.ubique.libs.ktor.common.now
-import ch.ubique.libs.ktor.http.throwIfNotSuccessful
 import ch.ubique.libs.ktor.http.toHttpDateString
 import io.ktor.client.engine.mock.respond
-import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.header
 import io.ktor.client.utils.CacheControl
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headers
 import io.ktor.util.date.GMTDate
-import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.fail
 
 class CacheControlRequestTest {
@@ -142,11 +138,6 @@ class CacheControlRequestTest {
 		withServer { number, request ->
 			respond(
 				content = "pcvbjcpo",
-				status = HttpStatusCode.OK,
-				headers = headers {
-					header(HttpHeaders.Expires, GMTDate(now() + 10000L).toHttpDateString())
-					header(HttpHeaders.ContentType, "text/plain")
-				}
 			)
 		}.testUbiquache { client ->
 			val response = client.getMockResponseBlocking {
@@ -187,32 +178,17 @@ class CacheControlRequestTest {
 	}
 
 	@Test
-	fun onlyIfCached() {
+	fun cacheOnly_post() {
 		withServer { number, request ->
 			respond(
-				content = "body",
+				content = "pcvbjcpo",
 			)
 		}.testUbiquache { client ->
-			val result = client.getMockResponseBlocking {
+			val response = client.postMockResponseBlocking {
 				header(HttpHeaders.CacheControl, CacheControl.ONLY_IF_CACHED)
 			}
-			assertEquals(HttpStatusCode.GatewayTimeout.value, result.status.value)
-		}
-	}
-
-	@Test
-	fun onlyIfCached_throw() {
-		withServer { number, request ->
-			respond(
-				content = "body",
-			)
-		}.testUbiquache { client ->
-			val result = client.getMockResponseBlocking {
-				header(HttpHeaders.CacheControl, CacheControl.ONLY_IF_CACHED)
-			}
-			assertFailsWith(ResponseException::class) {
-				runBlocking { result.throwIfNotSuccessful() }
-			}
+			assertEquals(HttpStatusCode.GatewayTimeout, response.status)
+			assertEquals(0, requestHistory.size)
 		}
 	}
 

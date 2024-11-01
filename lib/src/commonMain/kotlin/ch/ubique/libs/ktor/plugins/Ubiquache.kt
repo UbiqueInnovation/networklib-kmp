@@ -60,14 +60,19 @@ class Ubiquache private constructor(val name: String) {
 			scope.sendPipeline.insertPhaseAfter(HttpSendPipeline.State, CachePhase)
 
 			scope.sendPipeline.intercept(CachePhase) { content ->
-				if (content !is OutgoingContent.NoContent) return@intercept
-				if (context.method != HttpMethod.Get || !context.url.protocol.canStore()) return@intercept
+				val cacheControl = parseHeaderValue(context.headers[HttpHeaders.CacheControl])
+
+				if (content !is OutgoingContent.NoContent || context.method != HttpMethod.Get || !context.url.protocol.canStore()) {
+					if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
+						proceedWithCachedResourceNotFound(scope)
+					}
+					return@intercept
+				}
 
 				val requestData = context.build()
 				val cacheHandle = cacheManager.obtainCacheHandle(requestData)
 				context.attributes.put(attributeKeyCacheHandle, cacheHandle)
 
-				val cacheControl = parseHeaderValue(context.headers[HttpHeaders.CacheControl])
 				if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
 					// force cached response, do not make network request
 					if (cacheHandle.hasValidCachedResource()) {

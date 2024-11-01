@@ -6,10 +6,7 @@ import ch.ubique.libs.ktor.plugins.UbiquacheConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.HttpRequestData
-import io.ktor.client.request.HttpResponseData
-import io.ktor.client.request.get
+import io.ktor.client.request.*
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HeadersBuilder
@@ -71,6 +68,16 @@ fun HttpClient.getMockStringBlocking(
 	block: HttpRequestBuilder.() -> Unit = {},
 ): String = runBlocking {
 	get(urlString, block).bodyAsText()
+}
+
+/**
+ * Executes an [HttpClient]'s POST request intended for the [MockEngine] returning the response.
+ */
+fun HttpClient.postMockResponseBlocking(
+	urlString: String = "http://test/",
+	block: HttpRequestBuilder.() -> Unit = {},
+): HttpResponse = runBlocking {
+	post(urlString, block)
 }
 
 fun HttpResponse.bodyAsTextBlocking(): String = runBlocking {
