@@ -1,3 +1,5 @@
+@file:Suppress("NOTHING_TO_INLINE")
+
 package ch.ubique.libs.ktor
 
 import ch.ubique.libs.ktor.common.deleteRecursively

@@ -53,3 +53,6 @@ jobs:
           path: lib/build/reports/kover/reportJvm.xml
           title: Code Coverage
           update-comment: true
+          min-coverage-overall: 66
+          min-coverage-changed-files: 50
+          coverage-counter-type: LINE
