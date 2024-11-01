@@ -5,6 +5,8 @@ on: [ push ]
 permissions:
   pull-requests: write
   contents: read
+  issues: read
+  checks: write
 
 jobs:
   test:
