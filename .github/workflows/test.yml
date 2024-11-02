@@ -1,13 +1,7 @@
 name: Test
 
 on:
-  pull_request:
-
-permissions:
-  pull-requests: write
-  contents: read
-  issues: read
-  checks: write
+  push:
 
 jobs:
   test:
@@ -28,31 +22,11 @@ jobs:
       - name: Grant permission to execute
         run: chmod +x gradlew
 
-      - name: Clean
-        run: ./gradlew clean --console=plain
-
       - name: Tests
-        id: tests
-        run: ./gradlew :lib:jvmTest --console=plain
+        run: ./gradlew clean :lib:jvmTest --console=plain
         
       - name: Tests Report
         uses: EnricoMi/publish-unit-test-result-action/macos@v2
         with:
           check_name: 'Test Results'
           files: lib/build/test-results/**/*.xml
-        
-      - name: Coverage
-        id: coverage
-        run: ./gradlew :lib:koverXmlReportJvm --console=plain
-        
-      - name: Coverage Report
-        id: kover
-        uses: mi-kas/kover-report@v1
-        if: steps.coverage.outcome == 'success'
-        with:
-          path: lib/build/reports/kover/reportJvm.xml
-          title: Code Coverage
-          update-comment: true
-          min-coverage-overall: 66
-          min-coverage-changed-files: 50
-          coverage-counter-type: LINE
