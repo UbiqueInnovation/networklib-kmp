@@ -85,7 +85,7 @@ class KtorStateFlowTest {
 			respond(
 				content = "#$number",
 				headers = headers {
-					header(HttpHeaders.Expires, GMTDate(now() + 1000L).toHttpDateString())
+					header(HttpHeaders.Expires, GMTDate(now() + 9000L).toHttpDateString())
 				}
 			)
 		}.testUbiquache { client ->

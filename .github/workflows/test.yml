@@ -1,10 +1,16 @@
 name: Test
 
-on: [ push ]
+on:
+  push:
 
 jobs:
   test:
     runs-on: ["self-hosted", "macOS"]
+    env:
+      UB_ARTIFACTORY_URL_ANDROID: x
+      UB_ARTIFACTORY_USER: x
+      UB_ARTIFACTORY_PASSWORD: x
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4.1.1
 
@@ -16,5 +22,11 @@ jobs:
       - name: Grant permission to execute
         run: chmod +x gradlew
 
-      - name: Test
-        run: ./gradlew clean :lib:jvmTest --console=plain -PubiqueMavenUrl=X -PubiqueMavenUser=X -PubiqueMavenPass=X
+      - name: Tests
+        run: ./gradlew clean :lib:jvmTest --console=plain
+        
+      - name: Tests Report
+        uses: EnricoMi/publish-unit-test-result-action/macos@v2
+        with:
+          check_name: 'Test Results'
+          files: lib/build/test-results/**/*.xml
