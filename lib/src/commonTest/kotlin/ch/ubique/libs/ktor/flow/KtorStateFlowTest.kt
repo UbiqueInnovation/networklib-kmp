@@ -171,6 +171,41 @@ class KtorStateFlowTest {
 	}
 
 	@Test
+	fun repeatedRequest() = runTest {
+		withServer { number, request ->
+			respond(
+				content = "#$number",
+				headers = headers {
+					header(HttpHeaders.Expires, GMTDate(now() + 500L).toHttpDateString())
+				}
+			)
+		}.testUbiquache { client ->
+			run {
+				val stateFlow = ktorStateFlow<String>(defaultRefreshBackoff = 0) { cacheControl ->
+					client.get("http://test/") {
+						cacheControl(cacheControl)
+					}
+				}
+				stateFlow.test {
+					val loading = awaitItem()
+					assertIs<RequestState.Loading>(loading)
+					run {
+						val result = awaitItem()
+						assertIs<RequestState.Result<String>>(result)
+						assertEquals("#1", result.data)
+					}
+					run {
+						val result = awaitItem()
+						assertIs<RequestState.Result<String>>(result)
+						assertEquals("#2", result.data)
+					}
+				}
+				assertEquals(2, responseHistory.size)
+			}
+		}
+	}
+
+	@Test
 	fun connectionError() = runTest {
 		var triggeredConnectionException = false
 		withServer { number, request ->
