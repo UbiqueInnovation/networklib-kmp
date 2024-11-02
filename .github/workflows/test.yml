@@ -6,6 +6,9 @@ on:
 jobs:
   test:
     runs-on: ["self-hosted", "macOS"]
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     env:
       UB_ARTIFACTORY_URL_ANDROID: x
       UB_ARTIFACTORY_USER: x
