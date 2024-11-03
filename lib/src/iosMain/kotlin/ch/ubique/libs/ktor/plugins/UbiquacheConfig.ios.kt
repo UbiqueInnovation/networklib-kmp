@@ -6,7 +6,6 @@ import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
 import ch.ubique.libs.ktor.common.ensureDirectory
 import co.touchlab.sqliter.DatabaseConfiguration
 import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSUserDomainMask
@@ -14,7 +13,7 @@ import platform.Foundation.NSUserDomainMask
 actual object UbiquacheConfig {
 
 	internal actual fun getCacheDir(cacheName: String): Path {
-		val cacheDirectory: String = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first().toString()
+		val cacheDirectory: String = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first() as String
 		return Path(cacheDirectory, cacheName)
 	}
 
