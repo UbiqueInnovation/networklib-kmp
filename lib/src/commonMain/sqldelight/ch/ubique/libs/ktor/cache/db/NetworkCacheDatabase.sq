@@ -35,3 +35,9 @@ SELECT tag FROM cacheindex WHERE expire < ? AND lastaccess < ? AND etag IS NULL 
 
 scanLeastRecentlyUsed:
 SELECT tag, size FROM cacheindex WHERE lastaccess < ? ORDER BY lastaccess ASC;
+
+byUrl:
+SELECT tag FROM cacheindex WHERE url = ?;
+
+byUrlPrefix:
+SELECT tag FROM cacheindex WHERE url LIKE :pattern ESCAPE '\';

@@ -3,12 +3,11 @@ package ch.ubique.libs.ktor.cache
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
 import ch.ubique.libs.ktor.common.*
 import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.readBuffer
 import kotlinx.io.Source
 import kotlinx.io.files.Path
 
 internal class CacheHandle(
-	private val cacheTag: String,
+	internal val cacheTag: String,
 	private val url: String,
 	private val headCacheFile: Path,
 	private val bodyCacheFile: Path,
@@ -45,7 +44,7 @@ internal class CacheHandle(
 	suspend fun storeCachedData(head: String, body: ByteReadChannel, cacheMetadata: CacheMetadata) {
 		try {
 			headCacheFile.writeText(head)
-			bodyCacheFile.sink().use { body.readBuffer().transferTo(it) }
+			bodyCacheFile.writeByteReadChannel(body)
 			val fileSize = headCacheFile.size() + bodyCacheFile.size()
 			liveCacheMetadata.apply {
 				lastAccess = now()

@@ -1,6 +1,7 @@
 package ch.ubique.libs.ktor.cache
 
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
+import ch.ubique.libs.ktor.cache.db.executeUntilFalse
 import ch.ubique.libs.ktor.cache.extensions.backoff
 import ch.ubique.libs.ktor.cache.extensions.expiresDate
 import ch.ubique.libs.ktor.cache.extensions.nextRefreshDate
@@ -23,6 +24,7 @@ import io.ktor.util.sha1
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.core.toByteArray
+import kotlinx.coroutines.*
 import kotlinx.io.files.Path
 import kotlin.coroutines.CoroutineContext
 import kotlin.io.encoding.Base64
@@ -37,11 +39,37 @@ internal class CacheManager(
 	private val cacheMaxSize: Long = CACHE_SIZE_AUTO,
 ) {
 
-	val usedSize: Long get() = usedCacheSize()
-
-	val maxSize: Long get() = if (cacheMaxSize == CACHE_SIZE_AUTO) maxCacheSize() else cacheMaxSize
+	private val tagLock = CacheAccessSynchronization()
 
 	private var lastCleanupRun: Long = 0L
+
+	/**
+	 * Obtain a cache handle for a request, which can be used to store and retrieve cached data.
+	 */
+	fun obtainCacheHandle(request: HttpRequestData): CacheHandle {
+		val cacheTag = computeCacheTag(request)
+		return CacheHandle(
+			cacheTag,
+			request.url.toString(),
+			headCacheFile(cacheTag),
+			bodyCacheFile(cacheTag),
+			cacheMetadataDatabase,
+		)
+	}
+
+	private fun headCacheFile(cacheTag: String): Path {
+		return Path(cacheDirectory, "$cacheTag.head")
+	}
+
+	private fun bodyCacheFile(cacheTag: String): Path {
+		return Path(cacheDirectory, "$cacheTag.body")
+	}
+
+	suspend inline fun <R> withLock(handle: CacheHandle, block: () -> R): R {
+		return tagLock.withLock(handle.cacheTag) {
+			block()
+		}
+	}
 
 	/**
 	 * Store the response if it qualifies for caching. Returns a response instance that can be used further.
@@ -139,15 +167,63 @@ internal class CacheManager(
 	}
 
 	/**
+	 * Remove expired cache files, and if the cache size is over the limit remove files by LRU.
+	 * This will be executed async in a global scope.
+	 */
+	fun asyncLazyCleanup() {
+		val now = now()
+		if (lastCleanupRun > now - CACHE_CLEANUP_INTERVAL) {
+			return
+		}
+		lastCleanupRun = now
+
+		@OptIn(DelicateCoroutinesApi::class)
+		GlobalScope.launch(Dispatchers.IO) {
+			try {
+				cacheMetadataDatabase.networkCacheDatabaseQueries
+					.getExpired(now, now - LAST_ACCESS_IMMUNITY_TIMESPAN).executeAsList()
+					.forEach { cacheTag ->
+						removeCachedResource(cacheTag)
+					}
+				trimCacheLRU()
+			} catch (e: Exception) {
+				e.printStackTrace()
+			}
+		}
+	}
+
+	/**
+	 * Check if cache is above its size limit, and if so, remove files that haven't been accessed for quite some time (LRU).
+	 */
+	private suspend fun trimCacheLRU() {
+		val maxCacheSize = maxCacheSize()
+		var usedCacheSize = usedCacheSize()
+		if (usedCacheSize > maxCacheSize) {
+			val shredder = mutableListOf<String>()
+			cacheMetadataDatabase.networkCacheDatabaseQueries
+				.scanLeastRecentlyUsed(now() - LAST_ACCESS_IMMUNITY_TIMESPAN)
+				.executeUntilFalse { (cacheTag, size) ->
+					shredder += cacheTag
+					usedCacheSize -= size
+					return@executeUntilFalse usedCacheSize > maxCacheSize
+				}
+			shredder.forEach { cacheTag ->
+				removeCachedResource(cacheTag)
+			}
+		}
+	}
+
+	/**
 	 * Remove the cached file and its data in the cache database.
 	 */
-	private fun removeCachedResource(cacheTag: String) {
-		// TODO: need lock here
-		// delete database record
-		cacheMetadataDatabase.networkCacheDatabaseQueries.remove(cacheTag)
-		// delete files
-		headCacheFile(cacheTag).delete()
-		bodyCacheFile(cacheTag).delete()
+	private suspend fun removeCachedResource(cacheTag: String) {
+		tagLock.withLock(cacheTag) {
+			// delete database record
+			cacheMetadataDatabase.networkCacheDatabaseQueries.remove(cacheTag)
+			// delete files
+			headCacheFile(cacheTag).delete()
+			bodyCacheFile(cacheTag).delete()
+		}
 	}
 
 	/**
@@ -160,11 +236,18 @@ internal class CacheManager(
 	/**
 	 * Clear the cache for a specific URL or all URLs with a common prefix.
 	 */
-	fun clearCache(url: String, isPrefix: Boolean = false) {
-		// TODO: delete cache entries by URLs
+	fun clearCache(url: String, isPrefix: Boolean) {
+		cacheMetadataDatabase.networkCacheDatabaseQueries.run {
+			if (isPrefix) {
+				val escapedUrl = url.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+				byUrlPrefix("$escapedUrl%")
+			} else {
+				byUrl(url)
+			}
+		}.executeAsList()
 	}
 
-	private fun maxCacheSize(): Long {
+	fun maxCacheSize(): Long {
 		if (cacheMaxSize == CACHE_SIZE_AUTO) {
 			val availableSpace: Long = cacheDirectory.freeSpace() - usedCacheSize()
 			return (availableSpace / 2).coerceAtMost(CACHE_SIZE_AUTO_LIMIT)
@@ -173,31 +256,8 @@ internal class CacheManager(
 		}
 	}
 
-	private fun usedCacheSize(): Long {
+	fun usedCacheSize(): Long {
 		return cacheMetadataDatabase.networkCacheDatabaseQueries.getUsedCacheSize().executeAsOne().SUM ?: 0L
-	}
-
-	fun obtainCacheHandle(request: HttpRequestData): CacheHandle {
-		request.executionContext.invokeOnCompletion {
-			// TODO: release lock here?
-		}
-		// TODO: wait here for lock?
-		val cacheTag = computeCacheTag(request)
-		return CacheHandle(
-			cacheTag,
-			request.url.toString(),
-			headCacheFile(cacheTag),
-			bodyCacheFile(cacheTag),
-			cacheMetadataDatabase,
-		)
-	}
-
-	private fun headCacheFile(cacheTag: String): Path {
-		return Path(cacheDirectory, "$cacheTag.head")
-	}
-
-	private fun bodyCacheFile(cacheTag: String): Path {
-		return Path(cacheDirectory, "$cacheTag.body")
 	}
 
 	companion object {

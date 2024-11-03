@@ -49,12 +49,7 @@ class Ubiquache private constructor(val name: String) {
 		}
 
 		override fun install(plugin: Ubiquache, scope: HttpClient) {
-			val cacheDir = UbiquacheConfig.getCacheDir(plugin.name)
-			val db = NetworkCacheDatabase(UbiquacheConfig.createDriver(cacheDir))
-			val cacheManager = CacheManager(cacheDir, db)
-
-			// see also
-			io.ktor.client.plugins.cache.HttpCache
+			val cacheManager = plugin.getCacheManager()
 
 			val CachePhase = PipelinePhase("Ubiquache")
 			scope.sendPipeline.insertPhaseAfter(HttpSendPipeline.State, CachePhase)
@@ -73,44 +68,50 @@ class Ubiquache private constructor(val name: String) {
 				val cacheHandle = cacheManager.obtainCacheHandle(requestData)
 				context.attributes.put(attributeKeyCacheHandle, cacheHandle)
 
-				if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
-					// force cached response, do not make network request
-					if (cacheHandle.hasValidCachedResource()) {
-						val ubiquacheHeader = headersOf(HttpHeaders.XUbiquache, CacheControlValue.ONLY_IF_CACHED.value)
-						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, ubiquacheHeader)
-						proceedWithCache(cachedResponse.call)
+				cacheManager.withLock(cacheHandle) {
+					if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
+						// force cached response, do not make network request
+						if (cacheHandle.hasValidCachedResource()) {
+							val ubiquacheHeader = headersOf(HttpHeaders.XUbiquache, CacheControlValue.ONLY_IF_CACHED.value)
+							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, ubiquacheHeader)
+							proceedWithCache(cachedResponse.call)
+						} else {
+							proceedWithCachedResourceNotFound(scope)
+						}
+						return@intercept
 					} else {
-						proceedWithCachedResourceNotFound(scope)
+						cacheHandle.updateLastAccessed()
 					}
-					return@intercept
-				} else {
-					cacheHandle.updateLastAccessed()
-				}
 
-				if (CacheControlValue.NO_CACHE in cacheControl) {
-					// request as-is
-				} else if (cacheHandle.shouldBeRefreshedButIsNotExpired()) {
-					// valid resource in cache, but should be refreshed, fallback to cached resource on network error
-					context.attributes.put(attributeKeyUseCacheOnFailure, true)
-					context.withCacheHeader(cacheHandle)
-				} else if (cacheHandle.hasValidCachedResource()) {
-					// cache hit
-					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
-					proceedWithCache(cachedResponse.call)
-					return@intercept
-				} else {
-					// request using etag/last-modified
-					context.withCacheHeader(cacheHandle)
-				}
+					context.executionContext.invokeOnCompletion {
+						cacheManager.asyncLazyCleanup()
+					}
 
-				try {
-					proceed()
-				} catch (e: Throwable) {
-					if (context.attributes.getOrNull(attributeKeyUseCacheOnFailure) == true && cacheHandle.hasValidCachedResource()) {
+					if (CacheControlValue.NO_CACHE in cacheControl) {
+						// request as-is
+					} else if (cacheHandle.shouldBeRefreshedButIsNotExpired()) {
+						// valid resource in cache, but should be refreshed, fallback to cached resource on network error
+						context.attributes.put(attributeKeyUseCacheOnFailure, true)
+						context.withCacheHeader(cacheHandle)
+					} else if (cacheHandle.hasValidCachedResource()) {
+						// cache hit
 						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
 						proceedWithCache(cachedResponse.call)
+						return@intercept
 					} else {
-						throw e
+						// request using etag/last-modified
+						context.withCacheHeader(cacheHandle)
+					}
+
+					try {
+						proceed()
+					} catch (e: Throwable) {
+						if (context.attributes.getOrNull(attributeKeyUseCacheOnFailure) == true && cacheHandle.hasValidCachedResource()) {
+							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
+							proceedWithCache(cachedResponse.call)
+						} else {
+							throw e
+						}
 					}
 				}
 			}
@@ -187,6 +188,32 @@ class Ubiquache private constructor(val name: String) {
 	@KtorDsl
 	class Config {
 		var name: String = "ubiquache"
+	}
+
+	private var cacheManager: CacheManager? = null
+
+	private fun getCacheManager(): CacheManager {
+		return cacheManager ?: run {
+			val cacheDir = UbiquacheConfig.getCacheDir(name)
+			val db = NetworkCacheDatabase(UbiquacheConfig.createDriver(cacheDir))
+			return CacheManager(cacheDir, db).also { cacheManager = it }
+		}
+	}
+
+	fun clearCache() {
+		getCacheManager().clearCache()
+	}
+
+	fun clearCache(url: String, isPrefix: Boolean = false) {
+		getCacheManager().clearCache(url, isPrefix)
+	}
+
+	fun usedCacheSize(): Long {
+		return getCacheManager().usedCacheSize()
+	}
+
+	fun maxCacheSize(): Long {
+		return getCacheManager().maxCacheSize()
 	}
 
 }
