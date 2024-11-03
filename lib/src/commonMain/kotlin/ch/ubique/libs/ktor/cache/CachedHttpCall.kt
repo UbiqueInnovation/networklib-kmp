@@ -10,6 +10,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.util.date.GMTDate
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
+import io.ktor.utils.io.cancel
 import kotlinx.coroutines.Job
 import kotlinx.io.Source
 import kotlin.coroutines.CoroutineContext
@@ -44,13 +45,12 @@ private class CachedHttpResponse(
 	override val headers: Headers = origin.headers
 	override val coroutineContext: CoroutineContext = origin.coroutineContext + context
 
-	@InternalAPI
+	@OptIn(InternalAPI::class)
 	override val rawContent: ByteReadChannel = ByteReadChannel(body)
 
 	init {
 		context.invokeOnCompletion {
-			// TODO: close() doesn't seem have any effect, source file is still open
-			body.close()
+			rawContent.cancel()
 		}
 	}
 }

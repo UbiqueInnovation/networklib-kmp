@@ -7,12 +7,12 @@ import ch.ubique.libs.ktor.common.ensureDirectory
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.files.SystemTemporaryDirectory
 
 actual object UbiquacheConfig {
 
 	internal actual fun getCacheDir(cacheName: String): Path {
-		val tempDir = System.getProperty("java.io.tmpdir")
-		return Path(tempDir, cacheName)
+		return Path(SystemTemporaryDirectory, cacheName)
 	}
 
 	internal actual fun createDriver(cacheDir: Path): SqlDriver {

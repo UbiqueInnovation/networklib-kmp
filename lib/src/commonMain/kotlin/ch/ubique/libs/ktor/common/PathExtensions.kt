@@ -48,7 +48,7 @@ internal fun Path.ensureDirectory() {
 
 // for whatever reason, the use function from the stdlib is not usable
 @OptIn(ExperimentalStdlibApi::class)
-private inline fun <T : AutoCloseable, R> T.use(block: (T) -> R): R {
+internal inline fun <T : AutoCloseable, R> T.use(block: (T) -> R): R {
 	try {
 		return block(this)
 	} finally {

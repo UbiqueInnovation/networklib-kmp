@@ -45,7 +45,7 @@ internal class CacheHandle(
 	suspend fun storeCachedData(head: String, body: ByteReadChannel, cacheMetadata: CacheMetadata) {
 		try {
 			headCacheFile.writeText(head)
-			body.readBuffer().transferTo(bodyCacheFile.sink())
+			bodyCacheFile.sink().use { body.readBuffer().transferTo(it) }
 			val fileSize = headCacheFile.size() + bodyCacheFile.size()
 			liveCacheMetadata.apply {
 				lastAccess = now()
