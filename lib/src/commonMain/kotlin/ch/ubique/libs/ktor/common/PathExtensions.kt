@@ -1,6 +1,8 @@
 package ch.ubique.libs.ktor.common
 
+import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.core.writeText
+import io.ktor.utils.io.readBuffer
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
@@ -22,11 +24,15 @@ internal fun Path.readLines() = source().use {
 	}
 }
 
-internal fun Path.writeText(text: String) = fs.sink(this).buffered().use {
+internal fun Path.sink() = fs.sink(this).buffered()
+
+internal fun Path.writeText(text: String) = sink().use {
 	it.writeText(text)
 }
 
-internal fun Path.sink() = fs.sink(this).buffered()
+internal suspend fun Path.writeByteReadChannel(channel: ByteReadChannel) = sink().use {
+	channel.readBuffer().transferTo(it)
+}
 
 internal fun Path.delete() = runCatching { fs.delete(this, mustExist = false) }
 

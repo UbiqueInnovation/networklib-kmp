@@ -23,7 +23,10 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.KtorDsl
 
-class Ubiquache private constructor(val name: String) {
+class Ubiquache private constructor(
+	val name: String,
+	val maxSize: Long,
+) {
 
 	/**
 	 * Plugin to support disk caching with multiple levels of expiration.
@@ -36,6 +39,8 @@ class Ubiquache private constructor(val name: String) {
 	 */
 	companion object Plugin : HttpClientPlugin<Config, Ubiquache> {
 
+		const val CACHE_SIZE_AUTO = CacheManager.CACHE_SIZE_AUTO
+
 		override val key: AttributeKey<Ubiquache> = AttributeKey("Ubiquache")
 
 		private val attributeKeyCacheHandle = AttributeKey<CacheHandle>("CacheHandle")
@@ -45,16 +50,11 @@ class Ubiquache private constructor(val name: String) {
 			val config = Config().apply(block)
 			val name = config.name
 			require(name.matches(Regex("[A-Za-z0-9._\\-]+"))) { "Cache name must only use A-Za-z0-9._-" }
-			return Ubiquache(name)
+			return Ubiquache(name, config.maxSize)
 		}
 
 		override fun install(plugin: Ubiquache, scope: HttpClient) {
-			val cacheDir = UbiquacheConfig.getCacheDir(plugin.name)
-			val db = NetworkCacheDatabase(UbiquacheConfig.createDriver(cacheDir))
-			val cacheManager = CacheManager(cacheDir, db)
-
-			// see also
-			io.ktor.client.plugins.cache.HttpCache
+			val cacheManager = plugin.getCacheManager()
 
 			val CachePhase = PipelinePhase("Ubiquache")
 			scope.sendPipeline.insertPhaseAfter(HttpSendPipeline.State, CachePhase)
@@ -73,44 +73,46 @@ class Ubiquache private constructor(val name: String) {
 				val cacheHandle = cacheManager.obtainCacheHandle(requestData)
 				context.attributes.put(attributeKeyCacheHandle, cacheHandle)
 
-				if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
-					// force cached response, do not make network request
-					if (cacheHandle.hasValidCachedResource()) {
-						val ubiquacheHeader = headersOf(HttpHeaders.XUbiquache, CacheControlValue.ONLY_IF_CACHED.value)
-						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, ubiquacheHeader)
-						proceedWithCache(cachedResponse.call)
+				cacheManager.withLock(cacheHandle) {
+					if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
+						// force cached response, do not make network request
+						if (cacheHandle.hasValidCachedResource()) {
+							val ubiquacheHeader = headersOf(HttpHeaders.XUbiquache, CacheControlValue.ONLY_IF_CACHED.value)
+							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, ubiquacheHeader)
+							proceedWithCache(cachedResponse.call)
+						} else {
+							proceedWithCachedResourceNotFound(scope)
+						}
+						return@intercept
 					} else {
-						proceedWithCachedResourceNotFound(scope)
+						cacheHandle.updateLastAccessed()
 					}
-					return@intercept
-				} else {
-					cacheHandle.updateLastAccessed()
-				}
 
-				if (CacheControlValue.NO_CACHE in cacheControl) {
-					// request as-is
-				} else if (cacheHandle.shouldBeRefreshedButIsNotExpired()) {
-					// valid resource in cache, but should be refreshed, fallback to cached resource on network error
-					context.attributes.put(attributeKeyUseCacheOnFailure, true)
-					context.withCacheHeader(cacheHandle)
-				} else if (cacheHandle.hasValidCachedResource()) {
-					// cache hit
-					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
-					proceedWithCache(cachedResponse.call)
-					return@intercept
-				} else {
-					// request using etag/last-modified
-					context.withCacheHeader(cacheHandle)
-				}
-
-				try {
-					proceed()
-				} catch (e: Throwable) {
-					if (context.attributes.getOrNull(attributeKeyUseCacheOnFailure) == true && cacheHandle.hasValidCachedResource()) {
+					if (CacheControlValue.NO_CACHE in cacheControl) {
+						// request as-is
+					} else if (cacheHandle.shouldBeRefreshedButIsNotExpired()) {
+						// valid resource in cache, but should be refreshed, fallback to cached resource on network error
+						context.attributes.put(attributeKeyUseCacheOnFailure, true)
+						context.withCacheHeader(cacheHandle)
+					} else if (cacheHandle.hasValidCachedResource()) {
+						// cache hit
 						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
 						proceedWithCache(cachedResponse.call)
+						return@intercept
 					} else {
-						throw e
+						// request using etag/last-modified
+						context.withCacheHeader(cacheHandle)
+					}
+
+					try {
+						proceed()
+					} catch (e: Throwable) {
+						if (context.attributes.getOrNull(attributeKeyUseCacheOnFailure) == true && cacheHandle.hasValidCachedResource()) {
+							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
+							proceedWithCache(cachedResponse.call)
+						} else {
+							throw e
+						}
 					}
 				}
 			}
@@ -144,6 +146,10 @@ class Ubiquache private constructor(val name: String) {
 				} else {
 					cacheHandle.removeFromCache()
 				}
+			}
+
+			scope.receivePipeline.intercept(HttpReceivePipeline.After) { _ ->
+				cacheManager.asyncLazyCleanup()
 			}
 		}
 
@@ -186,7 +192,42 @@ class Ubiquache private constructor(val name: String) {
 
 	@KtorDsl
 	class Config {
+		/**
+		 * Name of the cache. If you want to have multiple independent caches, you can specify a different name.
+		 */
 		var name: String = "ubiquache"
+
+		/**
+		 * Maximum size of the cache in bytes.
+		 * Default is [CACHE_SIZE_AUTO] which will automatically determine the size based on available disk space.
+		 */
+		var maxSize: Long = CACHE_SIZE_AUTO
+	}
+
+	private var cacheManager: CacheManager? = null
+
+	private fun getCacheManager(): CacheManager {
+		return cacheManager ?: run {
+			val cacheDir = UbiquacheConfig.getCacheDir(name)
+			val db = NetworkCacheDatabase(UbiquacheConfig.createDriver(cacheDir))
+			return CacheManager(cacheDir, db, maxSize).also { cacheManager = it }
+		}
+	}
+
+	suspend fun clearCache() {
+		getCacheManager().clearCache()
+	}
+
+	suspend fun clearCache(url: String, isPrefix: Boolean = false) {
+		getCacheManager().clearCache(url, isPrefix)
+	}
+
+	fun usedCacheSize(): Long {
+		return getCacheManager().usedCacheSize()
+	}
+
+	fun maxCacheSize(): Long {
+		return getCacheManager().maxCacheSize()
 	}
 
 }

@@ -2,7 +2,9 @@
 
 package ch.ubique.libs.ktor
 
+import ch.ubique.libs.ktor.cache.CacheManager
 import ch.ubique.libs.ktor.common.deleteRecursively
+import ch.ubique.libs.ktor.common.skipTime
 import ch.ubique.libs.ktor.plugins.Ubiquache
 import ch.ubique.libs.ktor.plugins.UbiquacheConfig
 import io.ktor.client.HttpClient
@@ -12,10 +14,12 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HeadersBuilder
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import kotlinx.datetime.Clock
 import kotlin.random.Random
 import kotlin.random.nextUInt
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTime
 
 /**
  * Create a [MockEngine] with a given block of code to handle requests.
@@ -37,13 +41,16 @@ inline fun HeadersBuilder.header(name: String, value: String) {
  * Create a [MockEngine] with a given block of code to handle requests and execute the given block of code.
  */
 @OptIn(ExperimentalStdlibApi::class)
-internal inline fun MockEngine.testUbiquache(block: MockEngine.(client: HttpClient) -> Unit) {
+internal inline fun MockEngine.testUbiquache(maxCacheSize: Long? = null, block: MockEngine.(client: HttpClient) -> Unit) {
 	val testId = Clock.System.now().toEpochMilliseconds().toUInt().toHexString() + "-" + Random.nextUInt().toHexString()
 	val cacheName = "ubiquache-test-$testId"
 	try {
 		val client = HttpClient(this) {
 			install(Ubiquache) {
 				name = cacheName
+				if (maxCacheSize != null) {
+					maxSize = maxCacheSize
+				}
 			}
 		}
 		block(this, client)
@@ -82,6 +89,39 @@ fun HttpClient.postMockResponseBlocking(
 	post(urlString, block)
 }
 
+/**
+ * Get the response body as a String.
+ */
 fun HttpResponse.bodyAsTextBlocking(): String = runBlocking {
 	bodyAsText()
+}
+
+/**
+ * Run the given request block and wait for the cache cleanup to complete.
+ * @return the duration in milliseconds it took for the cache cleanup to complete.
+ */
+internal suspend inline fun runAndWaitForCacheCleanup(block: () -> Unit): Long {
+	val deferred = CompletableDeferred<Unit>()
+	val onCacheCleanupCompleted: (CacheManager) -> Unit = { deferred.complete(Unit) }
+	CacheManager.cacheCleanupListeners.add(onCacheCleanupCompleted)
+	block()
+	val wait = measureTime {
+		withContext(Dispatchers.Default.limitedParallelism(1)) {
+			try {
+				withTimeout(5.seconds) {
+					deferred.await()
+				}
+			} catch (e: TimeoutCancellationException) {
+				throw AssertionError("Expected cache cleanup, but did not complete in time", e)
+			}
+		}
+	}
+	return wait.inWholeMilliseconds
+}
+
+/**
+ * Skip time until the next cache cleanup is due.
+ */
+fun skipTimeToNextCacheCleanup() {
+	skipTime(CacheManager.CACHE_CLEANUP_INTERVAL + 1234)
 }

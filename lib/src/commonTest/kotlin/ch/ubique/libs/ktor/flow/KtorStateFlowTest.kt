@@ -18,10 +18,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.headers
 import io.ktor.util.date.GMTDate
 import kotlinx.coroutines.test.runTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertIs
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class KtorStateFlowTest {
 
@@ -206,6 +203,135 @@ class KtorStateFlowTest {
 	}
 
 	@Test
+	fun forceReload() = runTest {
+		withServer { number, request ->
+			respond(
+				content = "#$number",
+				headers = headers {
+					header(HttpHeaders.Expires, GMTDate(now() + 9000L).toHttpDateString())
+				}
+			)
+		}.testUbiquache { client ->
+			run {
+				val stateFlow = ktorStateFlow<String>(defaultRefreshBackoff = 0) { cacheControl ->
+					client.get("http://test/") {
+						cacheControl(cacheControl)
+					}
+				}
+				stateFlow.test {
+					run {
+						val loading = awaitItem()
+						assertIs<RequestState.Loading>(loading)
+
+						val result = awaitItem()
+						assertIs<RequestState.Result<String>>(result)
+						assertEquals("#1", result.data)
+					}
+
+					stateFlow.forceReload()
+
+					run {
+						val loading = awaitItem()
+						assertIs<RequestState.Loading>(loading)
+
+						val result = awaitItem()
+						assertIs<RequestState.Result<String>>(result)
+						assertEquals("#2", result.data)
+					}
+				}
+				assertEquals(2, responseHistory.size)
+			}
+		}
+	}
+
+	@Test
+	fun reload_cached() = runTest {
+		withServer { number, request ->
+			respond(
+				content = "#$number",
+				headers = headers {
+					header(HttpHeaders.Expires, GMTDate(now() + 9000L).toHttpDateString())
+				}
+			)
+		}.testUbiquache { client ->
+			run {
+				val stateFlow = ktorStateFlow<String>(defaultRefreshBackoff = 0) { cacheControl ->
+					client.get("http://test/") {
+						cacheControl(cacheControl)
+					}
+				}
+				stateFlow.test {
+					run {
+						val loading = awaitItem()
+						assertIs<RequestState.Loading>(loading)
+
+						val result = awaitItem()
+						assertIs<RequestState.Result<String>>(result)
+						assertEquals("#1", result.data)
+					}
+
+					stateFlow.reload()
+
+					run {
+						val loading = awaitItem()
+						assertIs<RequestState.Loading>(loading)
+
+						val result = awaitItem()
+						assertIs<RequestState.Result<String>>(result)
+						assertEquals("#1", result.data)
+					}
+				}
+				assertEquals(1, responseHistory.size)
+			}
+		}
+	}
+
+	@Test
+	fun reload_changingParameter() = runTest {
+		withServer { number, request ->
+			val param = request.url.parameters["param"] ?: fail()
+			respond(
+				content = "p$param",
+				headers = headers {
+					header(HttpHeaders.Expires, GMTDate(now() + 9000L).toHttpDateString())
+				}
+			)
+		}.testUbiquache { client ->
+			run {
+				var param = 1
+				val stateFlow = ktorStateFlow<String>(defaultRefreshBackoff = 0) { cacheControl ->
+					client.get("http://test/?param=$param") {
+						cacheControl(cacheControl)
+					}
+				}
+				stateFlow.test {
+					run {
+						val loading = awaitItem()
+						assertIs<RequestState.Loading>(loading)
+
+						val result = awaitItem()
+						assertIs<RequestState.Result<String>>(result)
+						assertEquals("p1", result.data)
+					}
+
+					param++
+					stateFlow.reload()
+
+					run {
+						val loading = awaitItem()
+						assertIs<RequestState.Loading>(loading)
+
+						val result = awaitItem()
+						assertIs<RequestState.Result<String>>(result)
+						assertEquals("p2", result.data)
+					}
+				}
+				assertEquals(2, responseHistory.size)
+			}
+		}
+	}
+
+	@Test
 	fun connectionError() = runTest {
 		var triggeredConnectionException = false
 		withServer { number, request ->
@@ -257,5 +383,7 @@ class KtorStateFlowTest {
 			assertEquals(1, responseHistory.size)
 		}
 	}
+
+	// TODO: test for reload & forceReload
 
 }
