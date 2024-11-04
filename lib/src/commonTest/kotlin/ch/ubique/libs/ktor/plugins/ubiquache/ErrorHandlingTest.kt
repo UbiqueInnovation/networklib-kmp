@@ -2,14 +2,17 @@ package ch.ubique.libs.ktor.plugins.ubiquache
 
 import ch.ubique.libs.ktor.*
 import ch.ubique.libs.ktor.common.now
+import ch.ubique.libs.ktor.http.throwIfNotSuccessful
 import ch.ubique.libs.ktor.http.toHttpDateString
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.client.network.sockets.SocketTimeoutException
+import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headers
 import io.ktor.util.date.GMTDate
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -35,6 +38,23 @@ class ErrorHandlingTest {
 		}.testUbiquache { client ->
 			val response = client.getMockResponseBlocking()
 			assertEquals(HttpStatusCode.InternalServerError, response.status)
+			assertEquals(1, requestHistory.size)
+		}
+	}
+
+	@Test
+	fun invalidStatusCode() = runTest {
+		withServer { number, request ->
+			respondError(HttpStatusCode(987, "Bazinga"))
+		}.testUbiquache { client ->
+			val response = client.getMockResponseBlocking()
+			try {
+				response.throwIfNotSuccessful()
+				fail("Expected exception")
+			} catch (e: ResponseException) {
+				assertEquals(987, e.response.status.value)
+				assertEquals("Bazinga", e.response.status.description)
+			}
 			assertEquals(1, requestHistory.size)
 		}
 	}
