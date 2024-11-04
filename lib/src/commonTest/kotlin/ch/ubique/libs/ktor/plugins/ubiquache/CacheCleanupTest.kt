@@ -110,7 +110,7 @@ class CacheCleanupTest {
 	}
 
 	@Test
-	fun autoCleanup_accessImmunity() {
+	fun autoCleanup_accessImmunity() = runTest {
 		withServer { number, request ->
 			respond(
 				content = "#$number",
@@ -122,13 +122,12 @@ class CacheCleanupTest {
 			val url1 = "http://test/1"
 			val url2 = "http://test/2"
 
-			run {
+			runAndWaitForCacheCleanup {
 				val response = client.getMockStringBlocking(url1)
 				assertEquals("#1", response)
+			}.also { waitDuration ->
+				skipTime(CacheManager.CACHE_CLEANUP_INTERVAL - waitDuration - 1000)
 			}
-
-			val waitDuration = waitForCacheCleanupToBeCompleted()
-			skipTime(CacheManager.CACHE_CLEANUP_INTERVAL - waitDuration - 1000)
 
 			run {
 				// this should not trigger a cache cleanup
@@ -139,13 +138,11 @@ class CacheCleanupTest {
 			// sanity check: test should fail if we add 1000ms instead of subtracting
 			skipTime(CacheManager.LAST_ACCESS_IMMUNITY_TIMESPAN - 1000)
 
-			run {
+			runAndWaitForCacheCleanup {
 				// this request should NOT remove the cached response from above
 				val response = client.getMockStringBlocking(url2)
 				assertEquals("#2", response)
 			}
-
-			waitForCacheCleanupToBeCompleted()
 
 			run {
 				// we should get the cached response here
@@ -156,7 +153,7 @@ class CacheCleanupTest {
 	}
 
 	@Test
-	fun autoCleanup_removedLRU() {
+	fun autoCleanup_removedLRU() = runTest {
 		withServer { number, request ->
 			respond(
 				content = "#$number",
@@ -168,13 +165,12 @@ class CacheCleanupTest {
 			val url1 = "http://test/1"
 			val url2 = "http://test/2"
 
-			run {
+			runAndWaitForCacheCleanup {
 				val response = client.getMockStringBlocking(url1)
 				assertEquals("#1", response)
+			}.also { waitDuration ->
+				skipTime((10 * 60 * 1000 - waitDuration).coerceAtLeast(0))
 			}
-
-			val waitDuration = waitForCacheCleanupToBeCompleted()
-			skipTime((10 * 60 * 1000 - waitDuration).coerceAtLeast(0))
 
 			run {
 				// this request should should be answered directly from the cache
@@ -184,13 +180,11 @@ class CacheCleanupTest {
 
 			skipTimeToNextCacheCleanup()
 
-			run {
+			runAndWaitForCacheCleanup {
 				// this request should remove the cached response from above
 				val response = client.getMockStringBlocking(url2)
 				assertEquals("#2", response)
 			}
-
-			waitForCacheCleanupToBeCompleted()
 
 			run {
 				// cached response has been removed: we should make a new request to the server
@@ -201,7 +195,7 @@ class CacheCleanupTest {
 	}
 
 	@Test
-	fun autoCleanup_keepETag() {
+	fun autoCleanup_keepETag() = runTest {
 		withServer { number, request ->
 			respond(
 				content = "#$number",
@@ -220,13 +214,11 @@ class CacheCleanupTest {
 
 			skipTimeToNextCacheCleanup()
 
-			run {
+			runAndWaitForCacheCleanup {
 				// this request should not remove the cached response from above
 				val response = client.getMockStringBlocking(url2)
 				assertEquals("#2", response)
 			}
-
-			waitForCacheCleanupToBeCompleted()
 
 			run {
 				// we should get the cached response here, not an unexpected 304

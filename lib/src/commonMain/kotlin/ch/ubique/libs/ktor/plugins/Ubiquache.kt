@@ -88,10 +88,6 @@ class Ubiquache private constructor(
 						cacheHandle.updateLastAccessed()
 					}
 
-					context.executionContext.invokeOnCompletion {
-						cacheManager.asyncLazyCleanup()
-					}
-
 					if (CacheControlValue.NO_CACHE in cacheControl) {
 						// request as-is
 					} else if (cacheHandle.shouldBeRefreshedButIsNotExpired()) {
@@ -150,6 +146,10 @@ class Ubiquache private constructor(
 				} else {
 					cacheHandle.removeFromCache()
 				}
+			}
+
+			scope.receivePipeline.intercept(HttpReceivePipeline.After) { _ ->
+				cacheManager.asyncLazyCleanup()
 			}
 		}
 

@@ -586,7 +586,7 @@ class ResponseCachingTest {
 						content = "sgcoperj",
 						headers = headers {
 							header(HttpHeaders.ETag, "657449293")
-							header(HttpHeaders.Expires, GMTDate(now() + 2000L).toHttpDateString())
+							header(HttpHeaders.Expires, GMTDate(now() + 5000L).toHttpDateString())
 						}
 					)
 				}

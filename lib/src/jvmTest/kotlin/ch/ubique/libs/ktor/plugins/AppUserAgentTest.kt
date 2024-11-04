@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 class AppUserAgentTest {
 
 	@Test
-	fun `test AppUserAgent`() {
+	fun appUserAgent() {
 		val mockEngine = MockEngine { request ->
 			respond(
 				content = request.headers[HttpHeaders.UserAgent].toString(),

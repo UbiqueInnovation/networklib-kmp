@@ -24,6 +24,9 @@ import io.ktor.util.sha1
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.core.toByteArray
+import kotlinx.atomicfu.AtomicLong
+import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.updateAndGet
 import kotlinx.coroutines.*
 import kotlinx.io.files.Path
 import kotlin.coroutines.CoroutineContext
@@ -43,7 +46,7 @@ internal class CacheManager(
 
 	private val tagLock = CacheAccessSynchronization()
 
-	private var lastCleanupRun: Long = 0L
+	private val lastCleanupRun: AtomicLong = atomic(0L)
 
 	/**
 	 * Obtain a cache handle for a request, which can be used to store and retrieve cached data.
@@ -174,10 +177,10 @@ internal class CacheManager(
 	 */
 	fun asyncLazyCleanup() {
 		val now = now()
-		if (lastCleanupRun > now - CACHE_CLEANUP_INTERVAL) {
+		if (lastCleanupRun.updateAndGet { if (it < now - CACHE_CLEANUP_INTERVAL) now else it } != now) {
+			// no need for cleanup yet
 			return
 		}
-		lastCleanupRun = now
 
 		@OptIn(DelicateCoroutinesApi::class)
 		GlobalScope.launch(Dispatchers.IO) {
@@ -190,6 +193,11 @@ internal class CacheManager(
 				trimCacheLRU()
 			} catch (e: Exception) {
 				e.printStackTrace()
+			} finally {
+				cacheCleanupListeners.apply {
+					forEach { it(this@CacheManager) }
+					clear()
+				}
 			}
 		}
 	}
@@ -275,6 +283,9 @@ internal class CacheManager(
 
 		/** Do not cleanup an expired cache file if it was accessed no longer than this timespan ago (in milliseconds). */
 		internal const val LAST_ACCESS_IMMUNITY_TIMESPAN = 10 * 1000L
+
+		/** Listeners that will be called after each cache cleanup operation. For testing purposes only. */
+		internal val cacheCleanupListeners = mutableListOf<(CacheManager) -> Unit>()
 	}
 
 }

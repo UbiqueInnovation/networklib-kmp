@@ -14,15 +14,11 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HeadersBuilder
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import kotlinx.datetime.Clock
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 import kotlin.random.Random
 import kotlin.random.nextUInt
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.measureTime
 
 /**
@@ -93,15 +89,39 @@ fun HttpClient.postMockResponseBlocking(
 	post(urlString, block)
 }
 
+/**
+ * Get the response body as a String.
+ */
 fun HttpResponse.bodyAsTextBlocking(): String = runBlocking {
 	bodyAsText()
 }
 
-fun waitForCacheCleanupToBeCompleted() = measureTime {
-	// FIXME: instead of randomly waiting, create some hook to wait for the actual cache cleanup job to be completed
-	runBlocking { delay(3000) }
-}.inWholeMilliseconds
+/**
+ * Run the given request block and wait for the cache cleanup to complete.
+ * @return the duration in milliseconds it took for the cache cleanup to complete.
+ */
+internal suspend inline fun runAndWaitForCacheCleanup(block: () -> Unit): Long {
+	val deferred = CompletableDeferred<Unit>()
+	val onCacheCleanupCompleted: (CacheManager) -> Unit = { deferred.complete(Unit) }
+	CacheManager.cacheCleanupListeners.add(onCacheCleanupCompleted)
+	block()
+	val wait = measureTime {
+		withContext(Dispatchers.Default.limitedParallelism(1)) {
+			try {
+				withTimeout(5.seconds) {
+					deferred.await()
+				}
+			} catch (e: TimeoutCancellationException) {
+				throw AssertionError("Expected cache cleanup, but did not complete in time", e)
+			}
+		}
+	}
+	return wait.inWholeMilliseconds
+}
 
+/**
+ * Skip time until the next cache cleanup is due.
+ */
 fun skipTimeToNextCacheCleanup() {
 	skipTime(CacheManager.CACHE_CLEANUP_INTERVAL + 1234)
 }
