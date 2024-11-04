@@ -2,7 +2,9 @@
 
 package ch.ubique.libs.ktor
 
+import ch.ubique.libs.ktor.cache.CacheManager
 import ch.ubique.libs.ktor.common.deleteRecursively
+import ch.ubique.libs.ktor.common.skipTime
 import ch.ubique.libs.ktor.plugins.Ubiquache
 import ch.ubique.libs.ktor.plugins.UbiquacheConfig
 import io.ktor.client.HttpClient
@@ -12,10 +14,16 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HeadersBuilder
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import kotlin.random.Random
 import kotlin.random.nextUInt
+import kotlin.time.measureTime
 
 /**
  * Create a [MockEngine] with a given block of code to handle requests.
@@ -37,13 +45,16 @@ inline fun HeadersBuilder.header(name: String, value: String) {
  * Create a [MockEngine] with a given block of code to handle requests and execute the given block of code.
  */
 @OptIn(ExperimentalStdlibApi::class)
-internal inline fun MockEngine.testUbiquache(block: MockEngine.(client: HttpClient) -> Unit) {
+internal inline fun MockEngine.testUbiquache(maxCacheSize: Long? = null, block: MockEngine.(client: HttpClient) -> Unit) {
 	val testId = Clock.System.now().toEpochMilliseconds().toUInt().toHexString() + "-" + Random.nextUInt().toHexString()
 	val cacheName = "ubiquache-test-$testId"
 	try {
 		val client = HttpClient(this) {
 			install(Ubiquache) {
 				name = cacheName
+				if (maxCacheSize != null) {
+					maxSize = maxCacheSize
+				}
 			}
 		}
 		block(this, client)
@@ -84,4 +95,13 @@ fun HttpClient.postMockResponseBlocking(
 
 fun HttpResponse.bodyAsTextBlocking(): String = runBlocking {
 	bodyAsText()
+}
+
+fun waitForCacheCleanupToBeCompleted() = measureTime {
+	// FIXME: instead of randomly waiting, create some hook to wait for the actual cache cleanup job to be completed
+	runBlocking { delay(3000) }
+}.inWholeMilliseconds
+
+fun skipTimeToNextCacheCleanup() {
+	skipTime(CacheManager.CACHE_CLEANUP_INTERVAL + 1234)
 }

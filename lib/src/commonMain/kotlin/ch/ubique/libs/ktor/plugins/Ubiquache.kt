@@ -23,7 +23,10 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.KtorDsl
 
-class Ubiquache private constructor(val name: String) {
+class Ubiquache private constructor(
+	val name: String,
+	val maxSize: Long,
+) {
 
 	/**
 	 * Plugin to support disk caching with multiple levels of expiration.
@@ -36,6 +39,8 @@ class Ubiquache private constructor(val name: String) {
 	 */
 	companion object Plugin : HttpClientPlugin<Config, Ubiquache> {
 
+		const val CACHE_SIZE_AUTO = CacheManager.CACHE_SIZE_AUTO
+
 		override val key: AttributeKey<Ubiquache> = AttributeKey("Ubiquache")
 
 		private val attributeKeyCacheHandle = AttributeKey<CacheHandle>("CacheHandle")
@@ -45,7 +50,7 @@ class Ubiquache private constructor(val name: String) {
 			val config = Config().apply(block)
 			val name = config.name
 			require(name.matches(Regex("[A-Za-z0-9._\\-]+"))) { "Cache name must only use A-Za-z0-9._-" }
-			return Ubiquache(name)
+			return Ubiquache(name, config.maxSize)
 		}
 
 		override fun install(plugin: Ubiquache, scope: HttpClient) {
@@ -187,7 +192,16 @@ class Ubiquache private constructor(val name: String) {
 
 	@KtorDsl
 	class Config {
+		/**
+		 * Name of the cache. If you want to have multiple independent caches, you can specify a different name.
+		 */
 		var name: String = "ubiquache"
+
+		/**
+		 * Maximum size of the cache in bytes.
+		 * Default is [CACHE_SIZE_AUTO] which will automatically determine the size based on available disk space.
+		 */
+		var maxSize: Long = CACHE_SIZE_AUTO
 	}
 
 	private var cacheManager: CacheManager? = null
@@ -196,15 +210,15 @@ class Ubiquache private constructor(val name: String) {
 		return cacheManager ?: run {
 			val cacheDir = UbiquacheConfig.getCacheDir(name)
 			val db = NetworkCacheDatabase(UbiquacheConfig.createDriver(cacheDir))
-			return CacheManager(cacheDir, db).also { cacheManager = it }
+			return CacheManager(cacheDir, db, maxSize).also { cacheManager = it }
 		}
 	}
 
-	fun clearCache() {
+	suspend fun clearCache() {
 		getCacheManager().clearCache()
 	}
 
-	fun clearCache(url: String, isPrefix: Boolean = false) {
+	suspend fun clearCache(url: String, isPrefix: Boolean = false) {
 		getCacheManager().clearCache(url, isPrefix)
 	}
 

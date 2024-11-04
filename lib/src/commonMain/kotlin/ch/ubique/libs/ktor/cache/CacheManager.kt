@@ -39,6 +39,8 @@ internal class CacheManager(
 	private val cacheMaxSize: Long = CACHE_SIZE_AUTO,
 ) {
 
+	private val database = cacheMetadataDatabase.networkCacheDatabaseQueries
+
 	private val tagLock = CacheAccessSynchronization()
 
 	private var lastCleanupRun: Long = 0L
@@ -180,7 +182,7 @@ internal class CacheManager(
 		@OptIn(DelicateCoroutinesApi::class)
 		GlobalScope.launch(Dispatchers.IO) {
 			try {
-				cacheMetadataDatabase.networkCacheDatabaseQueries
+				database
 					.getExpired(now, now - LAST_ACCESS_IMMUNITY_TIMESPAN).executeAsList()
 					.forEach { cacheTag ->
 						removeCachedResource(cacheTag)
@@ -200,7 +202,7 @@ internal class CacheManager(
 		var usedCacheSize = usedCacheSize()
 		if (usedCacheSize > maxCacheSize) {
 			val shredder = mutableListOf<String>()
-			cacheMetadataDatabase.networkCacheDatabaseQueries
+			database
 				.scanLeastRecentlyUsed(now() - LAST_ACCESS_IMMUNITY_TIMESPAN)
 				.executeUntilFalse { (cacheTag, size) ->
 					shredder += cacheTag
@@ -219,7 +221,7 @@ internal class CacheManager(
 	private suspend fun removeCachedResource(cacheTag: String) {
 		tagLock.withLock(cacheTag) {
 			// delete database record
-			cacheMetadataDatabase.networkCacheDatabaseQueries.remove(cacheTag)
+			database.remove(cacheTag)
 			// delete files
 			headCacheFile(cacheTag).delete()
 			bodyCacheFile(cacheTag).delete()
@@ -229,27 +231,32 @@ internal class CacheManager(
 	/**
 	 * Clear the cache, deleting all files in the cache. Pending cache operations might fail.
 	 */
-	fun clearCache() {
-		cacheDirectory.deleteRecursively()
+	suspend fun clearCache() = withContext(Dispatchers.IO) {
+		database.allTags().executeAsList().forEach { cacheTag ->
+			removeCachedResource(cacheTag)
+		}
+		database.vacuum()
 	}
 
 	/**
 	 * Clear the cache for a specific URL or all URLs with a common prefix.
 	 */
-	fun clearCache(url: String, isPrefix: Boolean) {
-		cacheMetadataDatabase.networkCacheDatabaseQueries.run {
+	suspend fun clearCache(url: String, isPrefix: Boolean) = withContext(Dispatchers.IO) {
+		run {
 			if (isPrefix) {
 				val escapedUrl = url.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-				byUrlPrefix("$escapedUrl%")
+				database.byUrlPrefix("$escapedUrl%")
 			} else {
-				byUrl(url)
+				database.byUrl(url)
 			}
-		}.executeAsList()
+		}.executeAsList().forEach { cacheTag ->
+			removeCachedResource(cacheTag)
+		}
 	}
 
 	fun maxCacheSize(): Long {
 		if (cacheMaxSize == CACHE_SIZE_AUTO) {
-			val availableSpace: Long = cacheDirectory.freeSpace() - usedCacheSize()
+			val availableSpace: Long = cacheDirectory.freeSpace() + usedCacheSize()
 			return (availableSpace / 2).coerceAtMost(CACHE_SIZE_AUTO_LIMIT)
 		} else {
 			return cacheMaxSize
@@ -257,12 +264,12 @@ internal class CacheManager(
 	}
 
 	fun usedCacheSize(): Long {
-		return cacheMetadataDatabase.networkCacheDatabaseQueries.getUsedCacheSize().executeAsOne().SUM ?: 0L
+		return database.getUsedCacheSize().executeAsOne().sumOfSize ?: 0L
 	}
 
 	companion object {
 		internal const val CACHE_SIZE_AUTO = -1L
-		internal const val CACHE_SIZE_AUTO_LIMIT = 128 * 1024 * 1024L
+		internal const val CACHE_SIZE_AUTO_LIMIT = 256 * 1024 * 1024L
 
 		internal const val CACHE_CLEANUP_INTERVAL = 30 * 1000L
 

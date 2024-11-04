@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS cacheindex (
 CREATE INDEX IF NOT EXISTS refresh_idx ON cacheindex (refresh);
 CREATE INDEX IF NOT EXISTS expire_idx ON cacheindex (expire);
 
+allTags:
+SELECT tag FROM cacheindex;
+
 save:
 INSERT OR REPLACE INTO cacheindex(tag, url, lastaccess, refresh, expire, etag, lastmod, size)
 VALUES(?, ?, ?, ?, ?, ?, ?, ?);
@@ -28,7 +31,7 @@ updateAccessed:
 UPDATE cacheindex SET lastaccess = ? WHERE tag = ?;
 
 getUsedCacheSize:
-SELECT SUM(size) FROM cacheindex;
+SELECT SUM(size) AS sumOfSize FROM cacheindex;
 
 getExpired:
 SELECT tag FROM cacheindex WHERE expire < ? AND lastaccess < ? AND etag IS NULL AND lastmod IS NULL;
@@ -41,3 +44,6 @@ SELECT tag FROM cacheindex WHERE url = ?;
 
 byUrlPrefix:
 SELECT tag FROM cacheindex WHERE url LIKE :pattern ESCAPE '\';
+
+vacuum:
+VACUUM;
