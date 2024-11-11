@@ -34,13 +34,13 @@ internal suspend fun Path.writeByteReadChannel(channel: ByteReadChannel) = sink(
 	channel.readBuffer().transferTo(it)
 }
 
-internal fun Path.delete() = runCatching { fs.delete(this, mustExist = false) }
+internal fun Path.delete() = runCatching { fs.delete(this, mustExist = false) }.isSuccess
 
-internal fun Path.deleteRecursively() {
+internal fun Path.deleteRecursively(): Boolean {
 	if (fs.metadataOrNull(this)?.isDirectory == true) {
 		fs.list(this).forEach { it.deleteRecursively() }
 	}
-	delete()
+	return delete()
 }
 
 internal expect fun Path.freeSpace(): Long
