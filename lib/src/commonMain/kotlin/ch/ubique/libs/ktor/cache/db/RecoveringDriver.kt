@@ -9,7 +9,6 @@ import app.cash.sqldelight.db.SqlPreparedStatement
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.io.IOException
 
 /**
  * A [SqlDriver] wrapper that can recover from fatal errors by recreating the underlying driver.
@@ -28,10 +27,10 @@ internal class RecoveringDriver(
 	private var isRecovering = false
 
 	private inline fun <R> runRecovering(crossinline block: () -> R): R {
-		try {
-			return block()
+		return try {
+			block()
 		} catch (e: Exception) {
-			return runBlocking {
+			runBlocking {
 				// make sure we don't have a race condition where multiple threads try to recover the driver
 				isRecovering = true
 				recoverMutex.withLock {
@@ -50,10 +49,6 @@ internal class RecoveringDriver(
 				}
 			}
 		}
-	}
-
-	override fun currentTransaction(): Transacter.Transaction? = runRecovering {
-		driver.currentTransaction()
 	}
 
 	override fun execute(
@@ -79,6 +74,10 @@ internal class RecoveringDriver(
 		driver.newTransaction()
 	}
 
+	override fun currentTransaction(): Transacter.Transaction? = runRecovering {
+		driver.currentTransaction()
+	}
+
 	override fun addListener(vararg queryKeys: String, listener: Query.Listener) {
 		driver.addListener(*queryKeys, listener = listener)
 	}
@@ -96,5 +95,3 @@ internal class RecoveringDriver(
 	}
 
 }
-
-class CacheDatabaseException(message: String, cause: Throwable? = null) : IOException(message, cause)
