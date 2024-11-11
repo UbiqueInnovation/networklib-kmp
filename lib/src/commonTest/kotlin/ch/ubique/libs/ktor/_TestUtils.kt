@@ -16,6 +16,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HeadersBuilder
 import kotlinx.coroutines.*
 import kotlinx.datetime.Clock
+import kotlinx.io.files.Path
 import kotlin.random.Random
 import kotlin.random.nextUInt
 import kotlin.time.Duration.Companion.seconds
@@ -124,4 +125,18 @@ internal suspend inline fun runAndWaitForCacheCleanup(block: () -> Unit): Long {
  */
 fun skipTimeToNextCacheCleanup() {
 	skipTime(CacheManager.CACHE_CLEANUP_INTERVAL + 1234)
+}
+
+/**
+ * Delete the given path recursively, retrying up to 10 times.
+ *
+ * For unknown reasons, the deletion of files sometimes fails but succeeds on the next attempt.
+ */
+suspend fun Path.reallyDelete() {
+	for (i in 1..10) {
+		val deleted = deleteRecursively()
+		if (deleted) break
+		println("Deletion attempt #$i failed for $this")
+		delay(1)
+	}
 }

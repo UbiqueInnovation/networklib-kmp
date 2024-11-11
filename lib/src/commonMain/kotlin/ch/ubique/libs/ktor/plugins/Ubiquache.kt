@@ -3,6 +3,8 @@ package ch.ubique.libs.ktor.plugins
 import ch.ubique.libs.ktor.cache.CacheHandle
 import ch.ubique.libs.ktor.cache.CacheManager
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
+import ch.ubique.libs.ktor.cache.db.RecoveringDriver
+import ch.ubique.libs.ktor.common.deleteRecursively
 import ch.ubique.libs.ktor.http.*
 import io.ktor.client.HttpClient
 import io.ktor.client.call.HttpClientCall
@@ -209,7 +211,14 @@ class Ubiquache private constructor(
 	private fun getCacheManager(): CacheManager {
 		return cacheManager ?: run {
 			val cacheDir = UbiquacheConfig.getCacheDir(name)
-			val db = NetworkCacheDatabase(UbiquacheConfig.createDriver(cacheDir))
+			val recoveringDriver = RecoveringDriver(
+				driverProvider = { UbiquacheConfig.createDriver(cacheDir) },
+				onFatalError = { error ->
+					cacheDir.deleteRecursively()
+					error.printStackTrace()
+				}
+			)
+			val db = NetworkCacheDatabase(recoveringDriver)
 			return CacheManager(cacheDir, db, maxSize).also { cacheManager = it }
 		}
 	}
