@@ -1,10 +1,14 @@
-name: Test
+name: Coverage
 
 on:
-  push:
+  pull_request:
+
+permissions:
+  pull-requests: write
+  contents: read
 
 jobs:
-  test:
+  coverage:
     runs-on: ["self-hosted", "macOS"]
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,7 +17,6 @@ jobs:
       UB_ARTIFACTORY_URL_ANDROID: x
       UB_ARTIFACTORY_USER: x
       UB_ARTIFACTORY_PASSWORD: x
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4.1.1
 
@@ -25,11 +28,15 @@ jobs:
       - name: Grant permission to execute
         run: chmod +x gradlew
 
-      - name: Tests
-        run: ./gradlew clean :lib:jvmTest --console=plain
-        
-      - name: Tests Report
-        uses: EnricoMi/publish-unit-test-result-action/macos@v2
+      - name: Coverage
+        run: ./gradlew clean :lib:koverXmlReportJvm --console=plain
+
+      - name: Coverage Report
+        uses: mi-kas/kover-report@v1
         with:
-          check_name: 'Test Results'
-          files: lib/build/test-results/**/*.xml
+          path: lib/build/reports/kover/reportJvm.xml
+          title: Code Coverage
+          update-comment: true
+          min-coverage-overall: 66
+          min-coverage-changed-files: 50
+          coverage-counter-type: LINE

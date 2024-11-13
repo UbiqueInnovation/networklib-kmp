@@ -1,7 +1,49 @@
-import kotlin.Boolean;
-
-CREATE TABLE NetworkCache (
-    id INTEGER NOT NULL,
-    url TEXT NOT NULL,
-    boolz INTEGER AS Boolean DEFAULT NULL
+CREATE TABLE IF NOT EXISTS cacheindex (
+	tag TEXT NOT NULL PRIMARY KEY,
+	url TEXT NOT NULL,
+	lastaccess INTEGER NOT NULL,
+	refresh INTEGER,
+	expire INTEGER NOT NULL,
+	etag TEXT,
+	lastmod INTEGER,
+	size INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS refresh_idx ON cacheindex (refresh);
+CREATE INDEX IF NOT EXISTS expire_idx ON cacheindex (expire);
+
+allTags:
+SELECT tag FROM cacheindex;
+
+save:
+INSERT OR REPLACE INTO cacheindex(tag, url, lastaccess, refresh, expire, etag, lastmod, size)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?);
+
+update:
+UPDATE cacheindex SET lastaccess=?, refresh=?, expire=?, etag=?, lastmod=? WHERE tag=?;
+
+get:
+SELECT * FROM cacheindex WHERE tag = ?;
+
+remove:
+DELETE FROM cacheindex WHERE tag = ?;
+
+updateAccessed:
+UPDATE cacheindex SET lastaccess = ? WHERE tag = ?;
+
+getUsedCacheSize:
+SELECT SUM(size) AS sumOfSize FROM cacheindex;
+
+getExpired:
+SELECT tag FROM cacheindex WHERE expire < ? AND lastaccess < ? AND etag IS NULL AND lastmod IS NULL;
+
+scanLeastRecentlyUsed:
+SELECT tag, size FROM cacheindex WHERE lastaccess < ? ORDER BY lastaccess ASC;
+
+byUrl:
+SELECT tag FROM cacheindex WHERE url = ?;
+
+byUrlPrefix:
+SELECT tag FROM cacheindex WHERE url LIKE :pattern ESCAPE '\';
+
+vacuum:
+VACUUM;

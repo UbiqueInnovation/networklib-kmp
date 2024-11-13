@@ -6,6 +6,7 @@ plugins {
 	alias(libs.plugins.vanniktech.publish)
 	alias(libs.plugins.sqldelight)
 	alias(libs.plugins.kotlinx.atomicfu)
+	alias(libs.plugins.kotlinx.kover)
 }
 
 kotlin {
@@ -53,8 +54,8 @@ kotlin {
 			implementation(libs.kotlin.test)
 			implementation(libs.kotlinx.coroutines.test)
 			implementation(libs.turbine)
-			implementation(libs.parameterize)
 			implementation(libs.ktor.client.mock)
+			implementation(libs.ktor.client.cio)
 		}
 		androidMain.dependencies {
 			implementation(libs.sqldelight.android.driver)
@@ -83,7 +84,7 @@ android {
 	namespace = "ch.ubique.libs.ktor"
 	compileSdk = 34
 	defaultConfig {
-		minSdk = 26
+		minSdk = 23
 	}
 }
 

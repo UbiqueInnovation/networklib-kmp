@@ -7,17 +7,16 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
-import io.ktor.utils.io.ByteReadChannel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class AppUserAgentTest {
 
 	@Test
-	fun `test AppUserAgent`() {
+	fun appUserAgent() {
 		val mockEngine = MockEngine { request ->
 			respond(
-				content = ByteReadChannel(request.headers[HttpHeaders.UserAgent].toString()),
+				content = request.headers[HttpHeaders.UserAgent].toString(),
 				status = HttpStatusCode.OK,
 				headers = headersOf(HttpHeaders.ContentType, "text/plain")
 			)

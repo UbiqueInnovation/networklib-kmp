@@ -1,20 +1,19 @@
 package ch.ubique.libs.ktor.flow
 
-import ch.ubique.libs.ktor.CacheControl
-import ch.ubique.libs.ktor.XUbiquache
 import ch.ubique.libs.ktor.cache.extensions.backoff
 import ch.ubique.libs.ktor.cache.extensions.expiresDate
 import ch.ubique.libs.ktor.cache.extensions.nextRefreshDate
 import ch.ubique.libs.ktor.cache.extensions.serverDate
 import ch.ubique.libs.ktor.flow.RequestState.*
-import ch.ubique.libs.ktor.throwIfNotSuccessful
+import ch.ubique.libs.ktor.http.XUbiquache
+import ch.ubique.libs.ktor.http.throwIfNotSuccessful
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.utils.CacheControl
 import io.ktor.http.HttpHeaders
 import io.ktor.util.reflect.TypeInfo
 import io.ktor.util.reflect.typeInfo
-import io.ktor.utils.io.errors.IOException
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
+import kotlinx.io.IOException
 import kotlin.coroutines.CoroutineContext
 
 /**

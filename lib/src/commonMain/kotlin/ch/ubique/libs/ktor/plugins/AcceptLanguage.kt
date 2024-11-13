@@ -6,7 +6,7 @@ import io.ktor.client.request.HttpRequestPipeline
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import io.ktor.util.AttributeKey
-import io.ktor.util.KtorDsl
+import io.ktor.utils.io.KtorDsl
 
 class AcceptLanguage private constructor(val languageProvider: () -> String) {
 

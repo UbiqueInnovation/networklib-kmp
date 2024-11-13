@@ -26,27 +26,51 @@ On how to use Ktor, have a look at the following resources:
 ### Ubiquache Plugin
 An application-level plugin for Ktor implementing a disk cache, supporting the major HTTP caching mechanisms as well as the custom cache rules specified by Ubique.
 
-_⚠ under construction ⚠_
-
 #### Usage
 ```kotlin
 import ch.ubique.libs.ktor.plugins.Ubiquache
 
 val client = HttpClient() {
-   install(Ubiquache)
+    install(Ubiquache)
 }
 ```
 
-#### Functionality
-Disk-level cache supporting the cache control mechanisms as defined by following HTTP headers:
+On Android, the Ubiquache plugin needs to be initialized before installing it in the Ktor client, e.g. in Application.onCreate():
 
-Request:
+```kotlin
+UbiquacheConfig.init(context)
+```
+
+If you need multiple independent caches, you can configure each plugin instance with a distinct name. Furthermore, you can set the maximum cache size in bytes:
+
+<details>
+<summary>Code example</summary>
+
+```kotlin
+val client = HttpClient() {
+    install(Ubiquache) {
+        name = "my-cache"
+        maxSize = 256 * 1024 * 1024 // 256 MB
+    }
+}
+```
+
+</details>
+
+#### Cache Control
+The disk-level cache supports the cache control mechanisms as defined by following HTTP headers:
+
+<details>
+<summary>Request HTTP headers</summary>
 
 * `Cache-Control: no-cache` – The response will not be loaded from cache and forces a network request.
 * `Cache-Control: no-store` – The response will not be stored to cache, but may return a stored response from cache if it's valid.
 * `Cache-Control: only-if-cached` – Prevent a network request. Fails with status code 504 if there is no valid cached response.
 
-Response:
+</details>
+
+<details>
+<summary>Response HTTP headers</summary>
 
 * `Expires: <date>`
 * `X-Best-Before: <date>` – and variants; synonymous with `Expires`.
@@ -56,12 +80,29 @@ Response:
 * `Cache-Control: no-cache`
 * `Cache-Control: no-store`
 
+</details>
+
 A request is uniquely identified by the following attributes. If any of these values differ, the request is handled and cached separately.
 
 * URL
 * HTTP method
 * Any Accept-\* headers
 * Authorization header
+
+#### Cache Management
+
+By obtaining the plugin instance:
+
+```kotlin
+val ubiquache = httpClient.plugin(Ubiquache)
+```
+
+you can access basic cache information and perform cleanup operations:
+
+* `ubiquache.clearCache()` – Removes all cached responses.
+* `ubiquache.clearCache(url)` – Removes the cached response for a specific URL.
+* `ubiquache.usedCacheSize()` – Current cache size in bytes.
+* `ubiquache.maxCacheSize()` – Maximum cache size in bytes.
 
 ### Ktor StateFlow
 `ktorStateFlow()` creates a `StateFlow` that, if it has active observers, executes a request and automatically refreshes
@@ -94,13 +135,16 @@ In case of an error, the `ktorStateFlow` stops and has to be restarted manually,
 Example of a `ktorStateFlow` with a changing request parameter, e.g. a filter.
 Setting the field `exampleFilter` automatically forces a reload with the new value:
 
+<details>
+<summary>Code example</summary>
+
 ```kotlin
 var exampleFilter: String = "default"
     set(value) {
         field = value
         stateflow.reload()
     }
-val stateflow = ktorStateFlow<MyModel> { cacheControl ->
+val stateflow = ktorStateFlow<summary> { cacheControl ->
     client.get(url) {
         url { parameter("filter", exampleFilter) }
         cacheControl(cacheControl) 
@@ -108,7 +152,12 @@ val stateflow = ktorStateFlow<MyModel> { cacheControl ->
 }
 ```
 
+</details>
+
 Or using a StateFlow as a value source instead:
+
+<details>
+<summary>Code example</summary>
 
 ```kotlin
 val exampleFilter = MutableStateFlow("default")
@@ -122,7 +171,12 @@ val requestStateFlow = exampleFilter.flatMapLatest { filter ->
 }
 ```
 
+</details>
+
 Example of a method returning a new `ktorStateFlow` instance for different but constant parameter values:
+
+<details>
+<summary>Code example</summary>
 
 ```kotlin
 fun stateflow(exampleId: String) = ktorStateFlow<MyModel> { cacheControl ->
@@ -132,6 +186,8 @@ fun stateflow(exampleId: String) = ktorStateFlow<MyModel> { cacheControl ->
     }
 }
 ```
+
+</details>
 
 ### AcceptLanguage Plugin
 HTTP client plugin to add the Accept-Language HTTP header. Either with a fixed language code, or a system dependent language list.
@@ -150,7 +206,7 @@ HTTP client plugin to add the User-Agent HTTP header, containing basic system an
 
 ```kotlin
 val client = HttpClient() {
-	AppUserAgent()
+    AppUserAgent()
 }
 ```
 
@@ -180,6 +236,12 @@ or deploy a build to your local maven repository and include that from any appli
         implementation("ch.ubique.kmp:network:$yourLocalVersion")
     }
     ```
+
+### Unit Tests
+
+Unit tests and coverage reports are run on the JVM target by default. 
+See also workflows for [Test](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/test.yml) 
+and [Coverage](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/coverage.yml).
 
 ## Deployment
 
