@@ -7,6 +7,7 @@ import ch.ubique.libs.ktor.common.writeText
 import ch.ubique.libs.ktor.http.toHttpDateString
 import ch.ubique.libs.ktor.plugins.Ubiquache
 import ch.ubique.libs.ktor.plugins.UbiquacheConfig
+import ch.ubique.libs.ktor.plugins.databaseFileName
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.plugin
 import io.ktor.http.HttpHeaders
@@ -63,7 +64,7 @@ class CacheCorruptionTest {
 				assertEquals("#1", response.bodyAsTextBlocking())
 				assertEquals(1, requestHistory.size)
 			}
-			val dbFile = Path(UbiquacheConfig.getCacheDir(client.plugin(Ubiquache).name), "cache.db")
+			val dbFile = Path(UbiquacheConfig.getCacheDir(client.plugin(Ubiquache).name), UbiquacheConfig.databaseFileName)
 			assertTrue(dbFile.exists())
 			dbFile.reallyDelete()
 			assertFalse(dbFile.exists())
@@ -86,7 +87,7 @@ class CacheCorruptionTest {
 				}
 			)
 		}.testUbiquache { client ->
-			val dbFile = Path(UbiquacheConfig.getCacheDir(client.plugin(Ubiquache).name), "cache.db")
+			val dbFile = Path(UbiquacheConfig.getCacheDir(client.plugin(Ubiquache).name), UbiquacheConfig.databaseFileName)
 			assertTrue(dbFile.exists())
 			dbFile.writeText("SQLite format 3\u0000 kaput!")
 			val response = client.getMockResponseBlocking()

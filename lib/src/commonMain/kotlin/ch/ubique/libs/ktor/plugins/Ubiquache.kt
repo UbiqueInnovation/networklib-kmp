@@ -223,18 +223,30 @@ class Ubiquache private constructor(
 		}
 	}
 
+	/**
+	 * Clear the cache, deleting all files in the cache. Pending cache operations might fail.
+	 */
 	suspend fun clearCache() {
 		getCacheManager().clearCache()
 	}
 
+	/**
+	 * Clear the cache for a specific URL or all URLs with a common prefix.
+	 */
 	suspend fun clearCache(url: String, isPrefix: Boolean = false) {
 		getCacheManager().clearCache(url, isPrefix)
 	}
 
+	/**
+	 * Get the current cache size in bytes.
+	 */
 	fun usedCacheSize(): Long {
 		return getCacheManager().usedCacheSize()
 	}
 
+	/**
+	 * Get the maximum cache size in bytes.
+	 */
 	fun maxCacheSize(): Long {
 		return getCacheManager().maxCacheSize()
 	}

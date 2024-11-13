@@ -236,9 +236,6 @@ internal class CacheManager(
 		}
 	}
 
-	/**
-	 * Clear the cache, deleting all files in the cache. Pending cache operations might fail.
-	 */
 	suspend fun clearCache() = withContext(Dispatchers.IO) {
 		database.allTags().executeAsList().forEach { cacheTag ->
 			removeCachedResource(cacheTag)
@@ -246,9 +243,6 @@ internal class CacheManager(
 		database.vacuum()
 	}
 
-	/**
-	 * Clear the cache for a specific URL or all URLs with a common prefix.
-	 */
 	suspend fun clearCache(url: String, isPrefix: Boolean) = withContext(Dispatchers.IO) {
 		run {
 			if (isPrefix) {

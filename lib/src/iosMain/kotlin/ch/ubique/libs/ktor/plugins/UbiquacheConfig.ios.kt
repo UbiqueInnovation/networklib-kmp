@@ -21,7 +21,7 @@ actual object UbiquacheConfig {
 		cacheDir.ensureDirectory()
 		return NativeSqliteDriver(
 			schema = NetworkCacheDatabase.Schema,
-			name = "cache.db",
+			name = databaseFileName,
 			onConfiguration = {
 				it.copy(
 					extendedConfig = DatabaseConfiguration.Extended(

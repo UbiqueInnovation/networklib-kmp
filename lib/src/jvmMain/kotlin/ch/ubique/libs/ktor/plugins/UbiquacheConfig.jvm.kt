@@ -6,7 +6,6 @@ import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
 import ch.ubique.libs.ktor.common.ensureDirectory
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 
 actual object UbiquacheConfig {
@@ -17,7 +16,7 @@ actual object UbiquacheConfig {
 
 	internal actual fun createDriver(cacheDir: Path): SqlDriver {
 		cacheDir.ensureDirectory()
-		val driver = JdbcSqliteDriver("jdbc:sqlite:$cacheDir/cache.db")
+		val driver = JdbcSqliteDriver("jdbc:sqlite:$cacheDir/$databaseFileName")
 		runBlocking { NetworkCacheDatabase.Schema.create(driver).await() }
 		return driver
 	}

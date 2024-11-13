@@ -57,8 +57,8 @@ val client = HttpClient() {
 
 </details>
 
-#### Functionality
-Disk-level cache supporting the cache control mechanisms as defined by following HTTP headers:
+#### Cache Control
+The disk-level cache supports the cache control mechanisms as defined by following HTTP headers:
 
 <details>
 <summary>Request HTTP headers</summary>
@@ -88,6 +88,21 @@ A request is uniquely identified by the following attributes. If any of these va
 * HTTP method
 * Any Accept-\* headers
 * Authorization header
+
+#### Cache Management
+
+By obtaining the plugin instance:
+
+```kotlin
+val ubiquache = httpClient.plugin(Ubiquache)
+```
+
+you can access basic cache information and perform cleanup operations:
+
+* `ubiquache.clearCache()` – Removes all cached responses.
+* `ubiquache.clearCache(url)` – Removes the cached response for a specific URL.
+* `ubiquache.usedCacheSize()` – Current cache size in bytes.
+* `ubiquache.maxCacheSize()` – Maximum cache size in bytes.
 
 ### Ktor StateFlow
 `ktorStateFlow()` creates a `StateFlow` that, if it has active observers, executes a request and automatically refreshes

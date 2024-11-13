@@ -10,3 +10,5 @@ expect object UbiquacheConfig {
 	internal fun createDriver(cacheDir: Path): SqlDriver
 
 }
+
+internal val UbiquacheConfig.databaseFileName: String get() = "cache.db"

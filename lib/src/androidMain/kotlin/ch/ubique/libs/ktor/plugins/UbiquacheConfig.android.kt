@@ -28,7 +28,7 @@ actual object UbiquacheConfig {
 		return AndroidSqliteDriver(
 			schema = NetworkCacheDatabase.Schema,
 			context = requireContext(),
-			name = Path(cacheDir, "cache.db").toString(),
+			name = Path(cacheDir, databaseFileName).toString(),
 		)
 	}
 
