@@ -384,6 +384,4 @@ class KtorStateFlowTest {
 		}
 	}
 
-	// TODO: test for reload & forceReload
-
 }

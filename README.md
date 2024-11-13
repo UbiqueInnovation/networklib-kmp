@@ -154,14 +154,14 @@ val stateflow = ktorStateFlow<summary> { cacheControl ->
 
 </details>
 
-Or using a StateFlow as a value source instead:
+Or using a StateFlow as a value source instead, with `flatMapLatestToKtorStateFlow()`:
 
 <details>
 <summary>Code example</summary>
 
 ```kotlin
 val exampleFilter = MutableStateFlow("default")
-val requestStateFlow = exampleFilter.flatMapLatest { filter ->
+val requestStateFlow = exampleFilter.flatMapLatestToKtorStateFlow { filter ->
     ktorStateFlow<MyModel> { cacheControl ->
         client.get(url) {
             url { parameter("filter", filter) }
