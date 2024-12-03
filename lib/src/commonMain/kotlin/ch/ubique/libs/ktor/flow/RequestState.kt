@@ -24,7 +24,7 @@ sealed class RequestState<out T : Any?> {
 	/**
 	 * Loading state.
 	 */
-	object Loading : RequestState<Nothing>()
+	data object Loading : RequestState<Nothing>()
 
 	/**
 	 * Get the data if this is a Result state, null otherwise.

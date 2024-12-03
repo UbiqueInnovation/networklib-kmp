@@ -9,10 +9,6 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
-    env:
-      UB_ARTIFACTORY_URL_ANDROID: x
-      UB_ARTIFACTORY_USER: x
-      UB_ARTIFACTORY_PASSWORD: x
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4.1.1
@@ -26,7 +22,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Tests
-        run: ./gradlew clean :lib:jvmTest --console=plain
+        run: ./gradlew clean :lib:jvmTest --console=plain -PubiqueMavenUrl=X -PubiqueMavenUser=X -PubiqueMavenPass=X
         
       - name: Tests Report
         uses: EnricoMi/publish-unit-test-result-action/macos@v2
