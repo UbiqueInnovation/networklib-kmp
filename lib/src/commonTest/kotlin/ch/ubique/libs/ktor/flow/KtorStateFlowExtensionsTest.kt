@@ -8,11 +8,13 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class KtorStateFlowExtensionsTest {
 
@@ -54,6 +56,24 @@ class KtorStateFlowExtensionsTest {
 			assertEquals(count, result.data)
 
 			assertEquals(count, responseHistory.size)
+		}
+	}
+
+	@Test
+	fun flatMapLatestToKtorStateFlow_initialValue() = runTest {
+		withServer { _, _ ->
+			error("Should not be called")
+		}.testUbiquache { client ->
+			val inputFlow = flow<Any> { error("Should not be called") }
+
+			val stateFlow = inputFlow.flatMapLatestToKtorStateFlow { _ ->
+				ktorStateFlow<Any> { _ ->
+					client.get("http://test/")
+				}
+			}
+
+			assertTrue(stateFlow.replayCache.isEmpty())
+			assertIs<RequestState.Loading>(stateFlow.value)
 		}
 	}
 

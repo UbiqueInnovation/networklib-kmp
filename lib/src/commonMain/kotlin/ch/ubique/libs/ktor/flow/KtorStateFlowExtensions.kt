@@ -26,11 +26,10 @@ import kotlinx.coroutines.flow.*
  * @param transform A function that takes a value emitted by the source flow and returns a new [KtorStateFlow].
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-fun <T, R> Flow<T>.flatMapLatestToKtorStateFlow(
+fun <T, R : RequestState<*>> Flow<T>.flatMapLatestToKtorStateFlow(
 	transform: (T) -> KtorStateFlow<R>,
 ): KtorStateFlow<R> {
 	var latestInnerFlow: KtorStateFlow<R>? = null
-	val requireLatestInnerFlow = { requireNotNull(latestInnerFlow) }
 
 	val flatMappedFlow = flatMapLatest { value ->
 		val innerFlow = transform(value)
@@ -40,10 +39,11 @@ fun <T, R> Flow<T>.flatMapLatestToKtorStateFlow(
 
 	val flatMappedFlowWrapper = object : StateFlow<R> {
 		override val replayCache: List<R>
-			get() = requireLatestInnerFlow().replayCache
+			get() = latestInnerFlow?.replayCache.orEmpty()
 
+		@Suppress("UNCHECKED_CAST")
 		override val value: R
-			get() = requireLatestInnerFlow().value
+			get() = latestInnerFlow?.value ?: RequestState.Loading as R
 
 		override suspend fun collect(collector: FlowCollector<R>): Nothing {
 			flatMappedFlow.collectLatest {
