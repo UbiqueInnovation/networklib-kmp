@@ -11,12 +11,15 @@ import ch.ubique.libs.ktor.withServer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.respondOk
 import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headers
 import io.ktor.util.date.GMTDate
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlin.test.*
 
@@ -379,6 +382,49 @@ class KtorStateFlowTest {
 				assertIs<RequestState.Result<String>>(result)
 				assertEquals("post", result.data)
 			}
+
+			assertEquals(1, responseHistory.size)
+		}
+	}
+
+	@Test
+	fun initialValue() = runTest {
+		withServer { _, _ ->
+			fail("Should not be called")
+		}.testUbiquache { client ->
+			val stateFlow = ktorStateFlow<String> { cacheControl ->
+				client.get("http://test/") {
+					fail("Should not be called")
+				}
+			}
+
+			assertIs<RequestState.Loading>(stateFlow.value)
+		}
+	}
+
+	@Test
+	fun resetAfterUnsubscribe() = runBlocking {
+		// runTest() doesn't work, as the KtorStateFlow cleanup job is completely independent of the test scope
+		withServer { _, _ ->
+			respondOk()
+		}.testUbiquache { client ->
+			val stateFlow = ktorStateFlow<String> { cacheControl ->
+				client.get("http://test/") {
+					cacheControl(cacheControl)
+				}
+			}
+
+			stateFlow.test {
+				val loading = awaitItem()
+				assertIs<RequestState.Loading>(loading)
+
+				val result = awaitItem()
+				assertIs<RequestState.Result<String>>(result)
+			}
+
+			delay(CANCELLATION_DELAY + 500)
+
+			assertIs<RequestState.Loading>(stateFlow.value)
 
 			assertEquals(1, responseHistory.size)
 		}
