@@ -253,6 +253,8 @@ private class StateFlowBlockRunner<T>(
 				// one last check on active observers to avoid any race condition between starting
 				// a running coroutine and cancellation
 				stopRunner()
+				// reset to loading state to clear data from memory
+				stateFlow.emit(Loading as T)
 			}
 		}
 	}
