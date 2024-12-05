@@ -19,16 +19,5 @@ jobs:
       - name: Grant permission to execute
         run: chmod +x gradlew
 
-      - name: Append version name suffix
-        id: version
-        if: ${{ inputs.versionNameSuffix }} != ''
-        run: |
-          if grep -q "VERSION_NAME=" gradle.properties; then
-            sed -i ' ' "/^VERSION_NAME=/s/$/-tmp-${{ github.run_number }}/" gradle.properties
-          else
-            echo "Could not find VERSION_NAME in gradle.properties"
-            exit 1
-          fi
-
       - name: Build
-        run: ./gradlew clean :lib:publishToMavenLocal --console=plain -PubiqueMavenUrl=X -PubiqueMavenUser=X -PubiqueMavenPass=X
+        run: ./gradlew clean :lib:publishToMavenLocal --console=plain -PubiqueMavenUrl=X -PubiqueMavenUser=X -PubiqueMavenPass=X -PgithubRefName=${{ github.run_number }}-local

@@ -2,15 +2,26 @@ name: Publish release artifacts to Artifactory
 
 on:
   push:
-    tags: [ 'v*' ]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+-[a-zA-Z0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
-  build:
-    uses: UbiqueInnovation/actions-android/.github/workflows/multiplatform_library_artifactory.yml@v1.5.8
-    with:
-      libModule: 'lib'
-    secrets:
-      ANDROID_JENKINS_PAT: ${{ secrets.ANDROID_JENKINS_PAT }}
-      UB_ARTIFACTORY_URL_ANDROID: ${{ secrets.UB_ARTIFACTORY_URL_ANDROID }}
-      UB_ARTIFACTORY_USERNAME: ${{ secrets.UB_ARTIFACTORY_USERNAME }}
-      UB_ARTIFACTORY_PASSWORD: ${{ secrets.UB_ARTIFACTORY_PASSWORD }}
+  release:
+    runs-on: ["self-hosted", "macOS"]
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4.1.1
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v1
+        with:
+          java-version: '17'
+
+      - name: Grant permission to execute
+        run: chmod +x gradlew
+
+      - name: Publish
+        run: ./gradlew :lib:publish -PubiqueMavenUrl=${{secrets.UB_ARTIFACTORY_URL_ANDROID}} -PubiqueMavenUser=${{secrets.UB_ARTIFACTORY_USER}} -PubiqueMavenPass=${{secrets.UB_ARTIFACTORY_PASSWORD}} -PgithubRefName=${{ github.ref_name }}

@@ -1,3 +1,4 @@
+
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
@@ -101,6 +102,10 @@ tasks.withType(Test::class) {
 		setEvents(listOf("standardOut", "passed", "skipped", "failed"))
 		exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
 	}
+}
+
+mavenPublishing {
+	coordinates(version = project.version.toString())
 }
 
 publishing {

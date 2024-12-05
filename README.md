@@ -245,9 +245,10 @@ and [Coverage](https://github.com/UbiqueInnovation/networklib-kmp/actions/workfl
 
 ## Deployment
 
-Each release on Github will be deployed to Ubique's internal Artifactory.
+Create a [Release](https://github.com/UbiqueInnovation/networklib-kmp/releases),
+setting the Tag to the desired version prefixed with a `v`.
 
-Use the `VERSION_NAME` as defined in the `gradle.properties` file as the release tag, prefixed with a `v`.
+Each release on Github will be deployed to Ubique's internal Artifactory.
 
 * Group: `ch.ubique.kmp`
 * Artifact: `network`
