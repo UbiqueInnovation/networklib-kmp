@@ -9,14 +9,12 @@ permissions:
 
 jobs:
   coverage:
-    runs-on: ["self-hosted", "macOS"]
+    runs-on: ubuntu-latest
+
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
-    env:
-      UB_ARTIFACTORY_URL_ANDROID: x
-      UB_ARTIFACTORY_USER: x
-      UB_ARTIFACTORY_PASSWORD: x
+
     steps:
       - uses: actions/checkout@v4.1.1
 

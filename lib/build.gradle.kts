@@ -1,4 +1,5 @@
 
+import com.vanniktech.maven.publish.SonatypeHost
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
@@ -106,16 +107,6 @@ tasks.withType(Test::class) {
 
 mavenPublishing {
 	coordinates(version = project.version.toString())
-}
-
-publishing {
-	repositories {
-		maven {
-			url = uri(System.getenv("UB_ARTIFACTORY_URL_ANDROID") ?: extra["ubiqueMavenUrl"] as? String ?: "")
-			credentials {
-				username = System.getenv("UB_ARTIFACTORY_USER") ?: extra["ubiqueMavenUser"] as? String ?: ""
-				password = System.getenv("UB_ARTIFACTORY_PASSWORD") ?: extra["ubiqueMavenPass"] as? String ?: ""
-			}
-		}
-	}
+	publishToMavenCentral(SonatypeHost.S01, true)
+	signAllPublications()
 }
