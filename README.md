@@ -2,10 +2,12 @@
 
 [![Build](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/build.yml/badge.svg)](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/build.yml)
 [![Test](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/test.yml/badge.svg)](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/test.yml)
+[![Release](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/release.yml/badge.svg)](https://github.com/UbiqueInnovation/networklib-kmp/actions/workflows/release.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/ch.ubique.kmp/network.svg?label=Maven%20Central)](https://search.maven.org/artifact/ch.ubique.kmp/network)
 
 ## Dependency
 
-Available on Ubique's internal Artifactory:
+Available on Maven Central:
 ```kotlin
 implementation("ch.ubique.kmp:network:1.0.0")
 ```
@@ -248,7 +250,7 @@ and [Coverage](https://github.com/UbiqueInnovation/networklib-kmp/actions/workfl
 Create a [Release](https://github.com/UbiqueInnovation/networklib-kmp/releases),
 setting the Tag to the desired version prefixed with a `v`.
 
-Each release on Github will be deployed to Ubique's internal Artifactory.
+Each release on Github will be deployed to Maven Central.
 
 * Group: `ch.ubique.kmp`
 * Artifact: `network`
