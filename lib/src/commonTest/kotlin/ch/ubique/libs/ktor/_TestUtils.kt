@@ -15,11 +15,12 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HeadersBuilder
 import kotlinx.coroutines.*
-import kotlinx.datetime.Clock
 import kotlinx.io.files.Path
 import kotlin.random.Random
 import kotlin.random.nextUInt
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
 
 /**
@@ -41,7 +42,7 @@ inline fun HeadersBuilder.header(name: String, value: String) {
 /**
  * Create a [MockEngine] with a given block of code to handle requests and execute the given block of code.
  */
-@OptIn(ExperimentalStdlibApi::class)
+@OptIn(ExperimentalStdlibApi::class, ExperimentalTime::class)
 internal inline fun MockEngine.testUbiquache(maxCacheSize: Long? = null, block: MockEngine.(client: HttpClient) -> Unit) {
 	val testId = Clock.System.now().toEpochMilliseconds().toUInt().toHexString() + "-" + Random.nextUInt().toHexString()
 	val cacheName = "ubiquache-test-$testId"
