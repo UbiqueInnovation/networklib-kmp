@@ -10,7 +10,7 @@ ktor = "3.2.0"
 slf4j = "2.0.17"
 sqldelight = "2.1.0"
 turbine = "1.2.1"
-vanniktech-publish = "0.30.0"
+vanniktech-publish = "0.33.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

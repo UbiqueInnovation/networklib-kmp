@@ -1,5 +1,3 @@
-
-import com.vanniktech.maven.publish.SonatypeHost
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
@@ -107,6 +105,6 @@ tasks.withType(Test::class) {
 
 mavenPublishing {
 	coordinates(version = project.version.toString())
-	publishToMavenCentral(SonatypeHost.S01, true)
+	publishToMavenCentral(true)
 	signAllPublications()
 }
