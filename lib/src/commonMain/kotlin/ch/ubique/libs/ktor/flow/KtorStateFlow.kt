@@ -20,9 +20,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
 import kotlinx.io.IOException
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * A StateFlow that executes a request repeatedly with an interval given by the response headers.
@@ -112,6 +113,7 @@ internal fun <T> ktorStateFlow(
 		}
 	}
 
+@OptIn(ExperimentalTime::class)
 private suspend fun <T> KtorStateFlowImpl<RequestState<T>>.loadAndWait(
 	request: suspend (cacheControl: String?) -> HttpResponse,
 	typeInfo: TypeInfo,
