@@ -9,7 +9,7 @@
 
 Available on Maven Central:
 ```kotlin
-implementation("ch.ubique.kmp:network:1.0.0")
+implementation("ch.ubique.kmp:network:1.1.1")
 ```
 
 You may find the current version and version history in the [Releases list](https://github.com/UbiqueInnovation/networklib-kmp/releases).
