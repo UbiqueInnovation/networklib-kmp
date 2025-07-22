@@ -3,6 +3,7 @@ package ch.ubique.libs.ktor.flow
 import app.cash.turbine.test
 import ch.ubique.libs.ktor.cache.extensions.cacheControl
 import ch.ubique.libs.ktor.common.now
+import ch.ubique.libs.ktor.common.runBlockingOrThrowIfNotSupported
 import ch.ubique.libs.ktor.common.skipTime
 import ch.ubique.libs.ktor.header
 import ch.ubique.libs.ktor.http.toHttpDateString
@@ -19,7 +20,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.headers
 import io.ktor.util.date.GMTDate
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlin.test.*
 
@@ -403,7 +403,7 @@ class KtorStateFlowTest {
 	}
 
 	@Test
-	fun resetAfterUnsubscribe() = runBlocking {
+	fun resetAfterUnsubscribe() = runBlockingOrThrowIfNotSupported {
 		// runTest() doesn't work, as the KtorStateFlow cleanup job is completely independent of the test scope
 		withServer { _, _ ->
 			respondOk()
