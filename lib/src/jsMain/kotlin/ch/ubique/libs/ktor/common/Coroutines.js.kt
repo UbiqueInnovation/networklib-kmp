@@ -10,7 +10,7 @@ internal actual fun <T> runBlockingOrThrowIfNotSupported(block: suspend () -> T)
     throw UnsupportedOperationException("runBlocking is not supported on Kotlin/JS")
 }
 
-internal actual val ioDispatcher: CoroutineDispatcher
+actual val ioDispatcher: CoroutineDispatcher
     get() = Dispatchers.Default
 
 internal actual val synchrotronDispatcher: CoroutineDispatcher

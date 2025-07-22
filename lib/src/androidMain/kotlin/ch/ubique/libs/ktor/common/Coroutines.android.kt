@@ -11,7 +11,7 @@ internal actual fun <T> runBlockingOrThrowIfNotSupported(block: suspend () -> T)
     return runBlocking { block() }
 }
 
-internal actual val ioDispatcher: CoroutineDispatcher
+actual val ioDispatcher: CoroutineDispatcher
     get() = Dispatchers.IO
 
 @OptIn(ExperimentalCoroutinesApi::class, DelicateCoroutinesApi::class)
