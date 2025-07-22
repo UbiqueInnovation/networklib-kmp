@@ -7,7 +7,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.newSingleThreadContext
 
-internal actual fun <T> runBlockingOrThrowIfNotSupported(block: suspend () -> T): T {
+actual fun <T> runBlockingOrThrowIfNotSupported(block: suspend () -> T): T {
     return runBlocking { block() }
 }
 

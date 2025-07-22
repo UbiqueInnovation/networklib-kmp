@@ -6,7 +6,7 @@ import kotlinx.coroutines.Dispatchers
 /**
  * Kotlin/JS not implemented
  */
-internal actual fun <T> runBlockingOrThrowIfNotSupported(block: suspend () -> T): T {
+actual fun <T> runBlockingOrThrowIfNotSupported(block: suspend () -> T): T {
     throw UnsupportedOperationException("runBlocking is not supported on Kotlin/JS")
 }
 
