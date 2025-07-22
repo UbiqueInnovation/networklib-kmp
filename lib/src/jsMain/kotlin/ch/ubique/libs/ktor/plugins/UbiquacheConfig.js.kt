@@ -3,16 +3,22 @@ package ch.ubique.libs.ktor.plugins
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.worker.WebWorkerDriver
 import kotlinx.io.files.Path
+import kotlinx.io.files.SystemTemporaryDirectory
 import org.w3c.dom.Worker
 
 
 actual object UbiquacheConfig {
 
+	/**
+	 * Kotlin/JS not implemented
+	 */
 	internal actual fun getCacheDir(cacheName: String): Path {
-		val cacheDirectory = ""
-		return Path(cacheDirectory, cacheName)
+		return Path(SystemTemporaryDirectory, cacheName)
 	}
 
+	/**
+	 * Kotlin/JS not implemented
+	 */
 	internal actual fun createDriver(cacheDir: Path): SqlDriver {
 		return WebWorkerDriver(
 			Worker(

@@ -7,14 +7,14 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.newSingleThreadContext
 
-actual fun <T> runBlockingOrThrowIfNotSupported(block: suspend () -> T): T {
+internal actual fun <T> runBlockingOrThrowIfNotSupported(block: suspend () -> T): T {
     return runBlocking { block() }
 }
 
-actual val ioDispatcher: CoroutineDispatcher
+internal actual val ioDispatcher: CoroutineDispatcher
     get() = Dispatchers.IO
 
 @OptIn(ExperimentalCoroutinesApi::class, DelicateCoroutinesApi::class)
-actual val synchrotronDispatcher: CoroutineDispatcher by lazy {
+internal actual val synchrotronDispatcher: CoroutineDispatcher by lazy {
     newSingleThreadContext("Synchrotron")
 }
