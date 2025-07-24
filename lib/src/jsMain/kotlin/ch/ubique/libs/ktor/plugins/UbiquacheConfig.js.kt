@@ -13,7 +13,7 @@ actual object UbiquacheConfig {
 	 * Kotlin/JS not implemented
 	 */
 	internal actual fun getCacheDir(cacheName: String): Path {
-		return Path(SystemTemporaryDirectory, cacheName)
+		return Path("", cacheName)
 	}
 
 	/**
