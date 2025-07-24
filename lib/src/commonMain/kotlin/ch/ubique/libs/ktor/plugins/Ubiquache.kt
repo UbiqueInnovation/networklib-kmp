@@ -24,6 +24,7 @@ import io.ktor.util.pipeline.PipelinePhase
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.KtorDsl
+import kotlinx.io.files.Path
 
 class Ubiquache private constructor(
 	val name: String,
@@ -210,16 +211,21 @@ class Ubiquache private constructor(
 
 	private fun getCacheManager(): CacheManager {
 		return cacheManager ?: run {
+			println("getCacheManager creating new cacheManager")
 			val cacheDir = UbiquacheConfig.getCacheDir(name)
+			println("getCacheManager after getCacheDir")
 			val recoveringDriver = RecoveringDriver(
-				driverProvider = { UbiquacheConfig.createDriver(cacheDir) },
+				driverProvider = { UbiquacheConfig.createDriver(cacheDir ?: Path("")) },
 				onFatalError = { error ->
-					cacheDir.deleteRecursively()
+					println("getCacheManager recoveringDriver onFatalError $error")
+					cacheDir?.deleteRecursively()
 					error.printStackTrace()
 				}
 			)
+			println("getCacheManager after recoveringDriver")
 			val db = NetworkCacheDatabase(recoveringDriver)
-			return CacheManager(cacheDir, db, maxSize).also { cacheManager = it }
+			println("getCacheManager before return")
+			return CacheManager(cacheDir ?: Path(""), db, maxSize).also { cacheManager = it }
 		}
 	}
 
