@@ -12,12 +12,13 @@ import platform.Foundation.NSUserDomainMask
 
 actual object UbiquacheConfig {
 
-	internal actual fun getCacheDir(cacheName: String): Path {
+	internal actual fun getCacheDir(cacheName: String): Path? {
 		val cacheDirectory: String = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first() as String
 		return Path(cacheDirectory, cacheName)
 	}
 
-	internal actual fun createDriver(cacheDir: Path): SqlDriver {
+	internal actual fun createDriver(cacheDir: Path?): SqlDriver {
+		if (cacheDir == null) throw IllegalArgumentException("cacheDir cannot be null")
 		cacheDir.ensureDirectory()
 		return NativeSqliteDriver(
 			schema = NetworkCacheDatabase.Schema,

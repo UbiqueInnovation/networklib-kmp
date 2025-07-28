@@ -7,7 +7,7 @@ expect object UbiquacheConfig {
 
 	internal fun getCacheDir(cacheName: String): Path?
 
-	internal fun createDriver(cacheDir: Path): SqlDriver
+	internal fun createDriver(cacheDir: Path?): SqlDriver
 
 }
 

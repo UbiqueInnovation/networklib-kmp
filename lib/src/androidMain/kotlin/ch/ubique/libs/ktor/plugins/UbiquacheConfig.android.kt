@@ -19,11 +19,12 @@ actual object UbiquacheConfig {
 		return applicationContext ?: error("UbiquacheConfig not initialized")
 	}
 
-	internal actual fun getCacheDir(cacheName: String): Path {
+	internal actual fun getCacheDir(cacheName: String): Path? {
 		return Path(requireContext().cacheDir.path, cacheName)
 	}
 
-	internal actual fun createDriver(cacheDir: Path): SqlDriver {
+	internal actual fun createDriver(cacheDir: Path?): SqlDriver {
+		if (cacheDir == null) throw IllegalArgumentException("cacheDir cannot be null")
 		cacheDir.ensureDirectory()
 		return AndroidSqliteDriver(
 			schema = NetworkCacheDatabase.Schema,

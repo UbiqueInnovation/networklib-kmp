@@ -18,7 +18,7 @@ actual object UbiquacheConfig {
     /**
      * Kotlin/JS not implemented
      */
-    internal actual fun createDriver(cacheDir: Path): SqlDriver {
+    internal actual fun createDriver(cacheDir: Path?): SqlDriver {
         return WebWorkerDriver(
             Worker(
                 js("""new URL("@cashapp/sqldelight-sqljs-worker/sqljs.worker.js", import.meta.url)""")
