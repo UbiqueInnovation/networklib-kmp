@@ -10,12 +10,11 @@ import kotlinx.io.files.SystemTemporaryDirectory
 
 actual object UbiquacheConfig {
 
-	internal actual fun getCacheDir(cacheName: String): Path? {
+	internal actual fun getCacheDir(cacheName: String): Path {
 		return Path(SystemTemporaryDirectory, cacheName)
 	}
 
-	internal actual fun createDriver(cacheDir: Path?): SqlDriver {
-		if (cacheDir == null) throw IllegalArgumentException("cacheDir cannot be null")
+	internal actual fun createDriver(cacheDir: Path): SqlDriver {
 		cacheDir.ensureDirectory()
 		val driver = JdbcSqliteDriver("jdbc:sqlite:$cacheDir/$databaseFileName")
 		runBlocking { NetworkCacheDatabase.Schema.create(driver).await() }

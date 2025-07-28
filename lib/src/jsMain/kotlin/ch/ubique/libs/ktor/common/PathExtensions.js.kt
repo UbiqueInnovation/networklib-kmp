@@ -6,5 +6,5 @@ import kotlinx.io.files.Path
  * Kotlin/JS not implemented
  */
 internal actual fun Path.freeSpace(): Long {
-	return 1e9.toLong()
+	return 0.toLong()
 }
