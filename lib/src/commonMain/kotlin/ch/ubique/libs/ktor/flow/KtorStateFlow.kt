@@ -5,6 +5,7 @@ import ch.ubique.libs.ktor.cache.extensions.expiresDate
 import ch.ubique.libs.ktor.cache.extensions.nextRefreshDate
 import ch.ubique.libs.ktor.cache.extensions.serverDate
 import ch.ubique.libs.ktor.common.ioDispatcher
+import ch.ubique.libs.ktor.common.isBrowser
 import ch.ubique.libs.ktor.common.synchrotronDispatcher
 import ch.ubique.libs.ktor.flow.RequestState.*
 import ch.ubique.libs.ktor.http.XUbiquache
@@ -124,7 +125,7 @@ private suspend fun <T> KtorStateFlowImpl<RequestState<T>>.loadAndWait(
 	defaultRefreshBackoff: Long,
 ): Boolean {
 	val response = request(cacheControl)
-	if (cacheControl == CacheControl.ONLY_IF_CACHED) {
+	if (cacheControl == CacheControl.ONLY_IF_CACHED && !isBrowser()) {
 		if (response.headers[HttpHeaders.XUbiquache]?.contains(CacheControl.ONLY_IF_CACHED) != true) {
 			throw IllegalStateException("KtorStateFlow requires the Ubiquache plugin to be installed")
 		}
