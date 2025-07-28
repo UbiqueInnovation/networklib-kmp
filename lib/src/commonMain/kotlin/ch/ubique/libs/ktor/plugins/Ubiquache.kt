@@ -222,8 +222,7 @@ class Ubiquache private constructor(
 			val recoveringDriver = RecoveringDriver(
 				driverProvider = { UbiquacheConfig.createDriver(cacheDir) },
 				onFatalError = { error ->
-					println("getCacheManager recoveringDriver onFatalError $error")
-					cacheDir?.deleteRecursively()
+					cacheDir.deleteRecursively()
 					error.printStackTrace()
 				}
 			)

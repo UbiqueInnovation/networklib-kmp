@@ -40,7 +40,6 @@ class CacheCorruptionTest {
 				assertEquals(1, requestHistory.size)
 			}
 			val cacheDir = UbiquacheConfig.getCacheDir(client.plugin(Ubiquache).name)
-			assertNotNull(cacheDir)
 			cacheDir.reallyDelete()
 			assertFalse(cacheDir.exists())
 			run {
@@ -66,9 +65,7 @@ class CacheCorruptionTest {
 				assertEquals("#1", response.bodyAsTextBlocking())
 				assertEquals(1, requestHistory.size)
 			}
-			val cacheDir = UbiquacheConfig.getCacheDir(client.plugin(Ubiquache).name)
-			assertNotNull(cacheDir)
-			val dbFile = Path(cacheDir, UbiquacheConfig.databaseFileName)
+			val dbFile = Path(UbiquacheConfig.getCacheDir(client.plugin(Ubiquache).name), UbiquacheConfig.databaseFileName)
 			assertTrue(dbFile.exists())
 			dbFile.reallyDelete()
 			assertFalse(dbFile.exists())
@@ -91,9 +88,7 @@ class CacheCorruptionTest {
 				}
 			)
 		}.testUbiquache { client ->
-			val cacheDir = UbiquacheConfig.getCacheDir(client.plugin(Ubiquache).name)
-			assertNotNull(cacheDir)
-			val dbFile = Path(cacheDir, UbiquacheConfig.databaseFileName)
+			val dbFile = Path(UbiquacheConfig.getCacheDir(client.plugin(Ubiquache).name), UbiquacheConfig.databaseFileName)
 			assertTrue(dbFile.exists())
 			dbFile.writeText("SQLite format 3\u0000 kaput!")
 			val response = client.getMockResponseBlocking()

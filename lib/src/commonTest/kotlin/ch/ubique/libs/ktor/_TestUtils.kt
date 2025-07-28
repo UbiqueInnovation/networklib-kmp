@@ -58,7 +58,7 @@ internal inline fun MockEngine.testUbiquache(maxCacheSize: Long? = null, block: 
 		}
 		block(this, client)
 	} finally {
-		UbiquacheConfig.getCacheDir(cacheName)?.deleteRecursively()
+		UbiquacheConfig.getCacheDir(cacheName).deleteRecursively()
 	}
 }
 

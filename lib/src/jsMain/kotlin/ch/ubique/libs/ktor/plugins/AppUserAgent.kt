@@ -1,8 +1,5 @@
 package ch.ubique.libs.ktor.plugins
 
-/**
- * Kotlin/JS not implemented
- */
 actual object AppUserAgentProvider {
 
 	/**
