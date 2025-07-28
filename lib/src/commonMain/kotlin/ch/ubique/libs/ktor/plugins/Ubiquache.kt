@@ -25,7 +25,6 @@ import io.ktor.util.pipeline.PipelinePhase
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.KtorDsl
-import kotlinx.io.files.Path
 
 class Ubiquache private constructor(
 	val name: String,
@@ -216,8 +215,10 @@ class Ubiquache private constructor(
 	private var cacheManager: CacheManager? = null
 
 	private fun getCacheManager(): CacheManager {
+		if (isBrowser()) {
+			throw UnsupportedOperationException("Ubiquache is not supported in the browser")
+		}
 		return cacheManager ?: run {
-			if (isBrowser()) throw UnsupportedOperationException("Ubiquache is not supported in the browser")
 			val cacheDir = UbiquacheConfig.getCacheDir(name)
 			val recoveringDriver = RecoveringDriver(
 				driverProvider = { UbiquacheConfig.createDriver(cacheDir) },

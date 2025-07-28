@@ -20,7 +20,10 @@ actual object UbiquacheConfig {
     }
 
     /**
-     * Kotlin/JS not implemented
+     * Kotlin/JS not implemented.
+     * This function is semi-useful, since `kotlinx.io.files.Path` is only supported in NodeJS,
+     * while WebWorkers (i.e. the WebWorkerDriver) is only supported in the browser.
+     * As long as it does not get called it works tho...
      */
     internal actual fun createDriver(cacheDir: Path): SqlDriver {
         return WebWorkerDriver(
