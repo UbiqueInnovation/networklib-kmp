@@ -6,7 +6,7 @@ import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlPreparedStatement
-import kotlinx.coroutines.runBlocking
+import ch.ubique.libs.ktor.common.runBlockingOrThrowIfNotSupported
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -30,7 +30,7 @@ internal class RecoveringDriver(
 		return try {
 			block()
 		} catch (e: Exception) {
-			runBlocking {
+			runBlockingOrThrowIfNotSupported {
 				// make sure we don't have a race condition where multiple threads try to recover the driver
 				isRecovering = true
 				recoverMutex.withLock {

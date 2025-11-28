@@ -5,6 +5,7 @@ import ch.ubique.libs.ktor.cache.CacheManager
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
 import ch.ubique.libs.ktor.cache.db.RecoveringDriver
 import ch.ubique.libs.ktor.common.deleteRecursively
+import ch.ubique.libs.ktor.common.isBrowser
 import ch.ubique.libs.ktor.http.*
 import io.ktor.client.HttpClient
 import io.ktor.client.call.HttpClientCall
@@ -56,6 +57,11 @@ class Ubiquache private constructor(
 		}
 
 		override fun install(plugin: Ubiquache, scope: HttpClient) {
+			if (isBrowser()) {
+				// disable caching in browser, as kotlinx.Path is not supported
+				return
+			}
+
 			val cacheManager = plugin.getCacheManager()
 
 			val CachePhase = PipelinePhase("Ubiquache")
@@ -209,6 +215,9 @@ class Ubiquache private constructor(
 	private var cacheManager: CacheManager? = null
 
 	private fun getCacheManager(): CacheManager {
+		if (isBrowser()) {
+			throw UnsupportedOperationException("Ubiquache is not supported in the browser")
+		}
 		return cacheManager ?: run {
 			val cacheDir = UbiquacheConfig.getCacheDir(name)
 			val recoveringDriver = RecoveringDriver(

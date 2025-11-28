@@ -1,5 +1,6 @@
 package ch.ubique.libs.ktor
 
+import ch.ubique.libs.ktor.common.runBlockingOrThrowIfNotSupported
 import ch.ubique.libs.ktor.http.throwIfNotSuccessful
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -7,7 +8,6 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -27,7 +27,7 @@ class ResponseExceptionTest {
 
 		val result = client.getMockResponseBlocking()
 
-		val exception = runCatching { runBlocking { result.throwIfNotSuccessful() } }.exceptionOrNull()
+		val exception = runCatching { runBlockingOrThrowIfNotSupported { result.throwIfNotSuccessful() } }.exceptionOrNull()
 		assertNotNull(exception)
 
 		val response = (exception as? ResponseException)?.response
@@ -35,7 +35,7 @@ class ResponseExceptionTest {
 
 		assertEquals(HttpStatusCode.NotFound, response.status)
 
-		val body = runBlocking { response.bodyAsText() }
+		val body = runBlockingOrThrowIfNotSupported { response.bodyAsText() }
 		assertEquals("body", body)
 	}
 

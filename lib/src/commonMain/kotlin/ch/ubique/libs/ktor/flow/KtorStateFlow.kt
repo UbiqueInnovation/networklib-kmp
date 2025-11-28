@@ -4,6 +4,9 @@ import ch.ubique.libs.ktor.cache.extensions.backoff
 import ch.ubique.libs.ktor.cache.extensions.expiresDate
 import ch.ubique.libs.ktor.cache.extensions.nextRefreshDate
 import ch.ubique.libs.ktor.cache.extensions.serverDate
+import ch.ubique.libs.ktor.common.ioDispatcher
+import ch.ubique.libs.ktor.common.isBrowser
+import ch.ubique.libs.ktor.common.synchrotronDispatcher
 import ch.ubique.libs.ktor.flow.RequestState.*
 import ch.ubique.libs.ktor.http.XUbiquache
 import ch.ubique.libs.ktor.http.throwIfNotSuccessful
@@ -62,7 +65,7 @@ abstract class KtorStateFlow<T>(underlyingStateFlow: StateFlow<T>) : StateFlow<T
  * @param request The block to run to execute the request when the [StateFlow] has active observers.
  */
 inline fun <reified T> ktorStateFlow(
-	context: CoroutineContext = Dispatchers.IO,
+	context: CoroutineContext = ioDispatcher,
 	defaultRefreshInterval: Long? = null,
 	defaultRefreshBackoff: Long = DEFAULT_REFRESH_BACKOFF,
 	cancellationTimeout: Long = CANCELLATION_DELAY,
@@ -122,7 +125,7 @@ private suspend fun <T> KtorStateFlowImpl<RequestState<T>>.loadAndWait(
 	defaultRefreshBackoff: Long,
 ): Boolean {
 	val response = request(cacheControl)
-	if (cacheControl == CacheControl.ONLY_IF_CACHED) {
+	if (cacheControl == CacheControl.ONLY_IF_CACHED && !isBrowser()) {
 		if (response.headers[HttpHeaders.XUbiquache]?.contains(CacheControl.ONLY_IF_CACHED) != true) {
 			throw IllegalStateException("KtorStateFlow requires the Ubiquache plugin to be installed")
 		}
@@ -166,7 +169,7 @@ private class KtorStateFlowImpl<T>(
 
 		blockRunner = StateFlowBlockRunner(this, scope, block)
 
-		scope.launch(Dispatchers.Synchrotron) {
+		scope.launch(synchrotronDispatcher) {
 			underlyingStateFlow.subscriptionCount
 				.map { subscriptionCount -> subscriptionCount > 0 }
 				.distinctUntilChanged()
@@ -199,12 +202,6 @@ private class KtorStateFlowImpl<T>(
 }
 
 /**
- * A single-threaded dispatcher to synchronize the flow management.
- */
-@OptIn(ExperimentalCoroutinesApi::class, DelicateCoroutinesApi::class)
-private val Dispatchers.Synchrotron by lazy { newSingleThreadContext("Synchrotron") }
-
-/**
  * Handles running a block in a coroutine tied to a StateFlow.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -221,7 +218,7 @@ private class StateFlowBlockRunner<T>(
 
 	private val pendingForceFresh = atomic(false)
 
-	suspend fun maybeRun(forceFresh: Boolean = false) = withContext(Dispatchers.Synchrotron) {
+	suspend fun maybeRun(forceFresh: Boolean = false) = withContext(synchrotronDispatcher) {
 		cancellationJob?.cancel()
 		cancellationJob = null
 		if (pendingForceFresh.value) {
@@ -235,7 +232,7 @@ private class StateFlowBlockRunner<T>(
 	}
 
 	fun restart(forceFresh: Boolean = false) {
-		scope.launch(Dispatchers.Synchrotron) {
+		scope.launch(synchrotronDispatcher) {
 			if (stateFlow.hasActiveCollectors()) {
 				stopRunner()
 				maybeRun(forceFresh)
@@ -245,11 +242,11 @@ private class StateFlowBlockRunner<T>(
 		}
 	}
 
-	suspend fun cancelWithDelay(timeoutInMs: Long) = withContext(Dispatchers.Synchrotron) {
+	suspend fun cancelWithDelay(timeoutInMs: Long) = withContext(synchrotronDispatcher) {
 		if (cancellationJob != null) {
 			error("Cancel call cannot happen without a maybeRun")
 		}
-		cancellationJob = scope.launch(Dispatchers.Synchrotron) {
+		cancellationJob = scope.launch(synchrotronDispatcher) {
 			delay(timeoutInMs)
 			if (!stateFlow.hasActiveCollectors()) {
 				// one last check on active observers to avoid any race condition between starting
@@ -261,7 +258,7 @@ private class StateFlowBlockRunner<T>(
 		}
 	}
 
-	private suspend fun stopRunner() = withContext(Dispatchers.Synchrotron) {
+	private suspend fun stopRunner() = withContext(synchrotronDispatcher) {
 		runningJob?.cancel()
 		runningJob = null
 	}
