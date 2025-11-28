@@ -10,7 +10,9 @@ val HttpHeaders.XMsMetaBestbefore get() = "X-MS-Meta-Bestbefore"
 val HttpHeaders.XNextRefresh get() = "X-Next-Refresh"
 val HttpHeaders.XAmzMetaNextRefresh get() = "X-Amz-Meta-Next-Refresh"
 val HttpHeaders.XMsMetaNextrefresh get() = "X-MS-Meta-Nextrefresh"
+val HttpHeaders.XBackoff get() = "X-Backoff"
 val HttpHeaders.XAmzMetaBackoff get() = "X-Amz-Meta-Backoff"
+val HttpHeaders.XMsMetaBackoff get() = "X-MS-Meta-Backoff"
 
 val HttpHeaders.XUbiquache get() = "X-Ubiquache"
 

@@ -44,7 +44,9 @@ fun HttpResponse.nextRefreshDate(): Long? {
  * @return backoff in millis.
  */
 fun HttpResponse.backoff(): Long? {
-	return headers[HttpHeaders.XAmzMetaBackoff]?.toLongOrNull()?.let { it * 1000L }
+	return headers[HttpHeaders.XBackoff]?.toLongOrNull()?.let { it * 1000L }
+		?: headers[HttpHeaders.XAmzMetaBackoff]?.toLongOrNull()?.let { it * 1000L }
+		?: headers[HttpHeaders.XMsMetaBackoff]?.toLongOrNull()?.let { it * 1000L }
 }
 
 /**
