@@ -13,8 +13,9 @@ import platform.Foundation.NSUserDomainMask
 actual object UbiquacheConfig {
 
 	internal actual fun getCacheDir(cacheName: String): Path {
-		val cacheDirectory: String = NSSearchPathForDirectoriesInDomains(NSCachesDirectory.toUInt(), NSUserDomainMask.toUInt(), true).first() as String
-		return Path(cacheDirectory, cacheName)
+	    val home = NSHomeDirectory()
+	    // Standard Apple sandbox layout (iOS/watchOS)
+	    return Path(home, "Library", "Caches", cacheName)
 	}
 
 	internal actual fun createDriver(cacheDir: Path): SqlDriver {
