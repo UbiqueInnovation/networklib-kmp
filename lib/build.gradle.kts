@@ -67,6 +67,9 @@ kotlin {
 		iosMain.dependencies {
 			implementation(libs.sqldelight.native.driver)
 		}
+		watchosMain.dependencies {
+			implementation(libs.sqldelight.native.driver)
+		}
 		jvmMain.dependencies {
 			implementation(libs.sqldelight.sqlite.driver)
 			implementation(libs.slf4j.nop)
