@@ -6,6 +6,7 @@ import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
 import ch.ubique.libs.ktor.common.ensureDirectory
 import co.touchlab.sqliter.DatabaseConfiguration
 import kotlinx.io.files.Path
+import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSUserDomainMask
