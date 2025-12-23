@@ -13,7 +13,7 @@ import platform.Foundation.NSUserDomainMask
 actual object UbiquacheConfig {
 
 	internal actual fun getCacheDir(cacheName: String): Path {
-		val cacheDirectory: String = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first() as String
+		val cacheDirectory: String = NSSearchPathForDirectoriesInDomains(NSCachesDirectory.toLong(), NSUserDomainMask.toLong(), true).first() as String
 		return Path(cacheDirectory, cacheName)
 	}
 
