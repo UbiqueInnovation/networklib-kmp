@@ -42,6 +42,10 @@ kotlin {
 	}
 	applyDefaultHierarchyTemplate()
 
+	js {
+		browser {}
+	}
+
 	sourceSets {
 		commonMain.dependencies {
 			implementation(libs.kotlinx.coroutines)
@@ -76,6 +80,12 @@ kotlin {
 			implementation(libs.slf4j.nop)
 		}
 		jvmTest
+		jsMain.dependencies {
+			implementation(libs.sqldelight.web.worker.driver)
+			implementation(npm("sql.js", "1.13.0"))
+			implementation(devNpm("copy-webpack-plugin", "9.1.0"))
+			implementation(npm("@cashapp/sqldelight-sqljs-worker", "2.1.0"))
+		}
 	}
 
 	targets.all {

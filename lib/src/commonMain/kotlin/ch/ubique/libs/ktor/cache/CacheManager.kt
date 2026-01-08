@@ -183,7 +183,7 @@ internal class CacheManager(
 		}
 
 		@OptIn(DelicateCoroutinesApi::class)
-		GlobalScope.launch(Dispatchers.IO) {
+		GlobalScope.launch(ioDispatcher) {
 			try {
 				database
 					.getExpired(now, now - LAST_ACCESS_IMMUNITY_TIMESPAN).executeAsList()
@@ -236,14 +236,14 @@ internal class CacheManager(
 		}
 	}
 
-	suspend fun clearCache() = withContext(Dispatchers.IO) {
+	suspend fun clearCache() = withContext(ioDispatcher) {
 		database.allTags().executeAsList().forEach { cacheTag ->
 			removeCachedResource(cacheTag)
 		}
 		database.vacuum()
 	}
 
-	suspend fun clearCache(url: String, isPrefix: Boolean) = withContext(Dispatchers.IO) {
+	suspend fun clearCache(url: String, isPrefix: Boolean) = withContext(ioDispatcher) {
 		run {
 			if (isPrefix) {
 				val escapedUrl = url.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
