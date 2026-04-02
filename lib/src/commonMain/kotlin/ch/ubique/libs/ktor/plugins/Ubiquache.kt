@@ -179,6 +179,7 @@ class Ubiquache private constructor(
 		private fun URLProtocol.canStore(): Boolean = name == "http" || name == "https"
 
 		private fun HttpRequestBuilder.withCacheHeader(cacheHandle: CacheHandle) {
+			if (!cacheHandle.cachedFilesExist()) return
 			val etag = cacheHandle.getETag()
 			if (etag != null) {
 				header(HttpHeaders.IfNoneMatch, etag)
