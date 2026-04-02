@@ -16,10 +16,13 @@ import io.ktor.http.headers
 import io.ktor.util.date.GMTDate
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class CacheCorruptionTest {
 
@@ -73,6 +76,53 @@ class CacheCorruptionTest {
 				assertEquals("#2", response.bodyAsTextBlocking())
 				assertEquals(2, requestHistory.size)
 			}
+		}
+	}
+
+	@Test
+	fun etag_cacheFilesDeletedBeforeConditionalRequest() = runTest {
+		withServer { number, request ->
+			when (number) {
+				1 -> respond(
+					content = "initial-content",
+					headers = headers {
+						header(HttpHeaders.ETag, "\"etag-v1\"")
+						header(HttpHeaders.Expires, GMTDate(now() + 9000L).toHttpDateString())
+					}
+				)
+				2 -> {
+					// With the bug: If-None-Match is sent despite files being gone → server
+					// responds 304 → InvalidCacheStateException (nothing to serve from cache).
+					// With the fix: conditional headers must not be sent when cache files are
+					// absent, so a fresh full response is fetched instead.
+					assertNull(request.headers[HttpHeaders.IfNoneMatch])
+					assertNull(request.headers[HttpHeaders.IfModifiedSince])
+					respond(
+						content = "fresh-content",
+						headers = headers {
+							header(HttpHeaders.ETag, "\"etag-v2\"")
+							header(HttpHeaders.Expires, GMTDate(now() + 9000L).toHttpDateString())
+						}
+					)
+				}
+				else -> fail("Unexpected request number: $number")
+			}
+		}.testUbiquache { client ->
+			// First request: cache the response with ETag
+			assertEquals("initial-content", client.getMockResponseBlocking().bodyAsTextBlocking())
+			assertEquals(1, requestHistory.size)
+
+			// Simulate OS evicting cache files while the DB record (including the ETag) survives
+			val cacheDir = UbiquacheConfig.getCacheDir(client.plugin(Ubiquache).name)
+			SystemFileSystem.list(cacheDir)
+				.filter { it.name.endsWith(".head") || it.name.endsWith(".body") }
+				.forEach { it.reallyDelete() }
+
+			// Second request: DB still has the ETag but cache files are gone.
+			// Should NOT send If-None-Match — there is nothing to serve if the server says 304.
+			// Should perform a plain GET and return the fresh response.
+			assertEquals("fresh-content", client.getMockResponseBlocking().bodyAsTextBlocking())
+			assertEquals(2, requestHistory.size)
 		}
 	}
 
