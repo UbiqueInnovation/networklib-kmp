@@ -23,4 +23,5 @@ pluginManagement {
     }
 }
 
-include(":lib")
+include(":network")
+project(":network").projectDir = file("lib")
