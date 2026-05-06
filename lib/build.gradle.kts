@@ -1,35 +1,40 @@
+@file:Suppress("UnstableApiUsage")
+
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
-	alias(libs.plugins.kotlin.multiplatform)
-	alias(libs.plugins.android.library)
-	alias(libs.plugins.vanniktech.publish)
-	alias(libs.plugins.sqldelight)
-	alias(libs.plugins.kotlinx.atomicfu)
-	alias(libs.plugins.kotlinx.kover)
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.vanniktech.publish)
+    alias(libs.plugins.sqldelight)
+    alias(libs.plugins.kotlinx.kover)
 }
 
 kotlin {
-	jvmToolchain(17)
+	jvmToolchain(21)
 
 	jvm()
 
-	androidTarget {
-		compilations.all {
-			kotlinOptions {
-				jvmTarget = "17"
-			}
-		}
+    android {
+        namespace = "ch.ubique.libs.ktor"
+        compileSdk = 36
+        minSdk = 23
 
-		publishLibraryVariants("release")
-	}
+        optimization {
+            consumerKeepRules.apply {
+                publish = true
+                file("consumer-rules.pro")
+            }
+        }
+
+        withHostTest { }
+    }
 
 	val xcf = XCFramework()
 	listOf(
 		iosX64(),
 		iosArm64(),
 		iosSimulatorArm64(),
-		watchosX64(),
 		watchosArm64(),
 		watchosDeviceArm64(),
 		watchosSimulatorArm64()
@@ -78,21 +83,9 @@ kotlin {
 		jvmTest
 	}
 
-	targets.all {
-		compilations.all {
-			compilerOptions.configure {
-				freeCompilerArgs.add("-Xexpect-actual-classes")
-			}
-		}
-	}
-}
-
-android {
-	namespace = "ch.ubique.libs.ktor"
-	compileSdk = 35
-	defaultConfig {
-		minSdk = 23
-	}
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
 }
 
 sqldelight {
