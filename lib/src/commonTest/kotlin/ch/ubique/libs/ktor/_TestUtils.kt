@@ -4,6 +4,7 @@ package ch.ubique.libs.ktor
 
 import ch.ubique.libs.ktor.cache.CacheManager
 import ch.ubique.libs.ktor.common.deleteRecursively
+import ch.ubique.libs.ktor.common.runBlockingOrThrowIfNotSupported
 import ch.ubique.libs.ktor.common.skipTime
 import ch.ubique.libs.ktor.plugins.Ubiquache
 import ch.ubique.libs.ktor.plugins.UbiquacheConfig
@@ -67,7 +68,7 @@ internal inline fun MockEngine.testUbiquache(maxCacheSize: Long? = null, block: 
 fun HttpClient.getMockResponseBlocking(
 	urlString: String = "http://test/",
 	block: HttpRequestBuilder.() -> Unit = {},
-): HttpResponse = runBlocking {
+): HttpResponse = runBlockingOrThrowIfNotSupported {
 	get(urlString, block)
 }
 
@@ -77,7 +78,7 @@ fun HttpClient.getMockResponseBlocking(
 fun HttpClient.getMockStringBlocking(
 	urlString: String = "http://test/",
 	block: HttpRequestBuilder.() -> Unit = {},
-): String = runBlocking {
+): String = runBlockingOrThrowIfNotSupported {
 	get(urlString, block).bodyAsText()
 }
 
@@ -87,14 +88,14 @@ fun HttpClient.getMockStringBlocking(
 fun HttpClient.postMockResponseBlocking(
 	urlString: String = "http://test/",
 	block: HttpRequestBuilder.() -> Unit = {},
-): HttpResponse = runBlocking {
+): HttpResponse = runBlockingOrThrowIfNotSupported {
 	post(urlString, block)
 }
 
 /**
  * Get the response body as a String.
  */
-fun HttpResponse.bodyAsTextBlocking(): String = runBlocking {
+fun HttpResponse.bodyAsTextBlocking(): String = runBlockingOrThrowIfNotSupported {
 	bodyAsText()
 }
 
