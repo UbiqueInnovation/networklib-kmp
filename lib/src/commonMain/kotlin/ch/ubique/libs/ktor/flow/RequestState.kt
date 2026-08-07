@@ -12,7 +12,7 @@ sealed class RequestState<out T : Any?> {
 	 * Result state.
 	 * @param data The result.
 	 */
-	data class Result<T>(val data: T) : RequestState<T>()
+	data class Result<T>(val data: T, val cachedResult: Boolean) : RequestState<T>()
 
 	/**
 	 * Error state.
@@ -37,7 +37,7 @@ sealed class RequestState<out T : Any?> {
 	 * Map the data if this is a Result state, unchanged state otherwise.
 	 */
 	fun <R : Any?> map(resultValueTransform: (T) -> R): RequestState<R> = when (this) {
-		is Result -> Result(resultValueTransform(data))
+		is Result -> Result(resultValueTransform(data), cachedResult)
 		is Error -> this
 		is Loading -> this
 	}
@@ -52,7 +52,7 @@ sealed class RequestState<out T : Any?> {
 		return when {
 			this is Error -> return if (other is Error) this.copy { this.retry(); other.retry() } else this
 			other is Error -> return other
-			this is Result && other is Result -> Result(resultValuesTransform(data, other.data))
+			this is Result && other is Result -> Result(resultValuesTransform(data, other.data), cachedResult)
 			else -> return Loading
 		}
 	}

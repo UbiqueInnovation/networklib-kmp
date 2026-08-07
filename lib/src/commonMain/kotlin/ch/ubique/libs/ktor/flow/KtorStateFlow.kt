@@ -5,6 +5,7 @@ import ch.ubique.libs.ktor.cache.extensions.expiresDate
 import ch.ubique.libs.ktor.cache.extensions.nextRefreshDate
 import ch.ubique.libs.ktor.cache.extensions.serverDate
 import ch.ubique.libs.ktor.flow.RequestState.*
+import ch.ubique.libs.ktor.http.CacheControlResult
 import ch.ubique.libs.ktor.http.XUbiquache
 import ch.ubique.libs.ktor.http.throwIfNotSuccessful
 import io.ktor.client.call.body
@@ -128,7 +129,8 @@ private suspend fun <T> KtorStateFlowImpl<RequestState<T>>.loadAndWait(
 		}
 	}
 	response.throwIfNotSuccessful()
-	emit(Result(response.body(typeInfo)))
+	val isCachedResult = response.headers[HttpHeaders.XUbiquache]?.contains(CacheControlResult.HIT.value) == true
+	emit(Result(response.body(typeInfo), isCachedResult))
 	val nextRefresh = response.nextRefreshDate() ?: response.expiresDate()
 	val backoff = response.backoff()?.coerceAtLeast(0) ?: defaultRefreshBackoff
 	val currentTimeMillis = Clock.System.now().toEpochMilliseconds()
