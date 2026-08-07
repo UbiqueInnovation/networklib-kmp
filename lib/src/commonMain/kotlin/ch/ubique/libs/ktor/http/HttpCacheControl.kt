@@ -21,3 +21,8 @@ object CacheControlValue {
 	val NO_STORE = HeaderValue(CacheControl.NO_STORE)
 	val ONLY_IF_CACHED = HeaderValue(CacheControl.ONLY_IF_CACHED)
 }
+
+object CacheControlResult {
+	val HIT = HeaderValue("HIT")
+	val MISS = HeaderValue("MISS")
+}

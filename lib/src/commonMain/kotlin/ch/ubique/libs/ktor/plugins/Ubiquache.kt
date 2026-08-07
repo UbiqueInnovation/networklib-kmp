@@ -48,6 +48,10 @@ class Ubiquache private constructor(
 		private val attributeKeyCacheHandle = AttributeKey<CacheHandle>("CacheHandle")
 		private val attributeKeyUseCacheOnFailure = AttributeKey<Boolean>("UseCacheOnFailure")
 
+		private val ubiquacheHitHeader = headersOf(HttpHeaders.XUbiquache, CacheControlResult.HIT.value)
+		private val ubiquacheMissHeader = headersOf(HttpHeaders.XUbiquache, CacheControlResult.MISS.value)
+		private val ubiquacheOnlyIfCachedHitHeader = headersOf(HttpHeaders.XUbiquache, "${CacheControlResult.HIT.value}, ${CacheControlValue.ONLY_IF_CACHED.value}")
+
 		override fun prepare(block: Config.() -> Unit): Ubiquache {
 			val config = Config().apply(block)
 			val name = config.name
@@ -79,8 +83,7 @@ class Ubiquache private constructor(
 					if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
 						// force cached response, do not make network request
 						if (cacheHandle.hasValidCachedResource()) {
-							val ubiquacheHeader = headersOf(HttpHeaders.XUbiquache, CacheControlValue.ONLY_IF_CACHED.value)
-							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, ubiquacheHeader)
+							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, ubiquacheOnlyIfCachedHitHeader)
 							proceedWithCache(cachedResponse.call)
 						} else {
 							proceedWithCachedResourceNotFound(scope)
@@ -98,7 +101,7 @@ class Ubiquache private constructor(
 						context.withCacheHeader(cacheHandle)
 					} else if (cacheHandle.hasValidCachedResource()) {
 						// cache hit
-						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
+						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, ubiquacheHitHeader)
 						proceedWithCache(cachedResponse.call)
 						return@intercept
 					} else {
@@ -110,7 +113,7 @@ class Ubiquache private constructor(
 						proceed()
 					} catch (e: Throwable) {
 						if (context.attributes.getOrNull(attributeKeyUseCacheOnFailure) == true && cacheHandle.hasValidCachedResource()) {
-							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
+							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, ubiquacheHitHeader)
 							proceedWithCache(cachedResponse.call)
 						} else {
 							throw e
@@ -125,7 +128,7 @@ class Ubiquache private constructor(
 				val useCacheOnFailure = requestAttributes.getOrNull(attributeKeyUseCacheOnFailure) == true
 
 				if (useCacheOnFailure && response.status.value in 500..599) {
-					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, response.request.toHttpRequestData())
+					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, response.request.toHttpRequestData(), ubiquacheHitHeader)
 					response.complete()
 					proceedWith(cachedResponse)
 					return@intercept
@@ -133,14 +136,14 @@ class Ubiquache private constructor(
 
 				if (response.status == HttpStatusCode.NotModified && response.request.expectNotModified()) {
 					cacheManager.updateCacheHeaders(cacheHandle, response)
-					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, response.request.toHttpRequestData())
+					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, response.request.toHttpRequestData(), ubiquacheHitHeader)
 					response.complete()
 					proceedWith(cachedResponse)
 					return@intercept
 				}
 
 				if (response.isCacheable()) {
-					val cachedResponse = cacheManager.storeCacheableResponse(cacheHandle, response)
+					val cachedResponse = cacheManager.storeCacheableResponse(cacheHandle, response, ubiquacheMissHeader)
 					if (cachedResponse != null) {
 						proceedWith(cachedResponse)
 						return@intercept

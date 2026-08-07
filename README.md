@@ -91,6 +91,22 @@ A request is uniquely identified by the following attributes. If any of these va
 * Any Accept-\* headers
 * Authorization header
 
+#### Cache Hit / Miss Detection
+
+Every response served by a client with the Ubiquache plugin carries an `X-Ubiquache` response header that tells you whether the result was served from the cache or freshly fetched:
+
+* `X-Ubiquache: HIT` – The response body was served from the cache. This includes plain cache hits, 304 revalidation, and fallback to the cached response on server or connection errors.
+* `X-Ubiquache: MISS` – The response was freshly fetched from the network.
+* `X-Ubiquache: only-if-cached` – No cached resource was available for an `only-if-cached` request (status 504).
+* `X-Ubiquache: HIT, only-if-cached` – An `only-if-cached` request was served from the cache.
+* No header – The response was not cached (e.g. non-cacheable or `no-store` response).
+
+```kotlin
+val response = client.get(url)
+val ubiquache = response.headers[HttpHeaders.XUbiquache]
+val isCached = ubiquache?.contains(CacheControlResult.HIT.value) == true
+```
+
 #### Cache Management
 
 By obtaining the plugin instance:
