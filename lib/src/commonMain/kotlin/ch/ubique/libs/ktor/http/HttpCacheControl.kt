@@ -14,8 +14,6 @@ val HttpHeaders.XBackoff get() = "X-Backoff"
 val HttpHeaders.XAmzMetaBackoff get() = "X-Amz-Meta-Backoff"
 val HttpHeaders.XMsMetaBackoff get() = "X-MS-Meta-Backoff"
 
-val HttpHeaders.XUbiquache get() = "X-Ubiquache"
-
 object CacheControlValue {
 	val NO_CACHE = HeaderValue(CacheControl.NO_CACHE)
 	val NO_STORE = HeaderValue(CacheControl.NO_STORE)

@@ -79,7 +79,7 @@ internal class CacheManager(
 	/**
 	 * Store the response if it qualifies for caching. Returns a response instance that can be used further.
 	 */
-	internal suspend fun storeCacheableResponse(handle: CacheHandle, response: HttpResponse): HttpResponse? {
+	internal suspend fun storeCacheableResponse(handle: CacheHandle, response: HttpResponse, injectHeader: Headers? = null): HttpResponse? {
 		val cacheMetadata = response.getCacheMetadata()
 
 		if (now() < cacheMetadata.expires || cacheMetadata.etag != null || cacheMetadata.lastModified != null) {
@@ -91,7 +91,7 @@ internal class CacheManager(
 			cacheDirectory.ensureDirectory()
 			handle.storeCachedData(head, bodyStream, cacheMetadata)
 
-			return readCachedResponse(handle, response.call.client, response.request.toHttpRequestData())
+			return readCachedResponse(handle, response.call.client, response.request.toHttpRequestData(), injectHeader)
 		} else {
 			return null
 		}

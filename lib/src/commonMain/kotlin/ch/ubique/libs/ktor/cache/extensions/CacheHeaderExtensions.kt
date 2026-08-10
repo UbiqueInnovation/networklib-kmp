@@ -8,6 +8,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HeaderValue
 import io.ktor.http.HttpHeaders
 import io.ktor.http.cacheControl
+import io.ktor.http.parseHeaderValue
 
 /**
  * Get the date of this response.
@@ -68,4 +69,33 @@ fun List<HeaderValue>.maxAge(): Long? {
  */
 fun HttpRequestBuilder.cacheControl(cacheControl: String?) {
 	header(HttpHeaders.CacheControl, cacheControl)
+}
+
+/**
+ * Returns whether the specified cache served this response directly from its cache.
+ */
+fun HttpResponse.isCacheHit(cacheName: String = UbiquacheCacheStatusName): Boolean {
+	return cacheStatusValues().any { cacheStatus ->
+		cacheStatus.value == "\"$cacheName\"" &&
+				cacheStatus.params.any { it.name == "hit" && it.value.isEmpty() }
+	}
+}
+
+/**
+ * Returns whether the specified cache supplied the response content from its cache.
+ *
+ * This includes direct cache hits, responses reconstructed after a successful 304
+ * validation, and responses served from cache after a failed refresh.
+ */
+fun HttpResponse.isReadFromCache(cacheName: String = UbiquacheCacheStatusName): Boolean {
+	return cacheStatusValues().any { cacheStatus ->
+		if (cacheStatus.value != "\"$cacheName\"") {
+			return@any false
+		}
+		val hasHit = cacheStatus.params.any { it.name == "hit" && it.value.isEmpty() }
+		val wasValidated = cacheStatus.params.any { it.name == "fwd-status" && it.value == "304" }
+		val wasFallback = cacheStatus.params.any { it.name == "fwd" && it.value == "miss" } &&
+			cacheStatus.params.none { it.name == "stored" && it.value.isEmpty() }
+		hasHit || wasValidated || wasFallback
+	}
 }

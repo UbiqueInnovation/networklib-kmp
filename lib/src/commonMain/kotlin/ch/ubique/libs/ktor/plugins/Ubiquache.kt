@@ -47,6 +47,8 @@ class Ubiquache private constructor(
 
 		private val attributeKeyCacheHandle = AttributeKey<CacheHandle>("CacheHandle")
 		private val attributeKeyUseCacheOnFailure = AttributeKey<Boolean>("UseCacheOnFailure")
+		private val attributeKeyCacheStatusForwardReason = AttributeKey<String>("CacheStatusForwardReason")
+		internal val attributeKeyUbiquacheApplied = AttributeKey<Boolean>("UbiquacheApplied")
 
 		override fun prepare(block: Config.() -> Unit): Ubiquache {
 			val config = Config().apply(block)
@@ -63,6 +65,9 @@ class Ubiquache private constructor(
 
 			scope.sendPipeline.intercept(CachePhase) { content ->
 				val cacheControl = parseHeaderValue(context.headers[HttpHeaders.CacheControl])
+				if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
+					context.attributes.put(attributeKeyUbiquacheApplied, true)
+				}
 
 				if (content !is OutgoingContent.NoContent || context.method != HttpMethod.Get || !context.url.protocol.canStore()) {
 					if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
@@ -79,8 +84,7 @@ class Ubiquache private constructor(
 					if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
 						// force cached response, do not make network request
 						if (cacheHandle.hasValidCachedResource()) {
-							val ubiquacheHeader = headersOf(HttpHeaders.XUbiquache, CacheControlValue.ONLY_IF_CACHED.value)
-							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, ubiquacheHeader)
+							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, cacheStatusHitHeader())
 							proceedWithCache(cachedResponse.call)
 						} else {
 							proceedWithCachedResourceNotFound(scope)
@@ -91,18 +95,23 @@ class Ubiquache private constructor(
 					}
 
 					if (CacheControlValue.NO_CACHE in cacheControl) {
-						// request as-is
+						context.attributes.put(attributeKeyCacheStatusForwardReason, CacheStatusForwardReason.REQUEST)
 					} else if (cacheHandle.shouldBeRefreshedButIsNotExpired()) {
 						// valid resource in cache, but should be refreshed, fallback to cached resource on network error
 						context.attributes.put(attributeKeyUseCacheOnFailure, true)
+						context.attributes.put(attributeKeyCacheStatusForwardReason, CacheStatusForwardReason.MISS)
 						context.withCacheHeader(cacheHandle)
 					} else if (cacheHandle.hasValidCachedResource()) {
 						// cache hit
-						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
+						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, cacheStatusHitHeader())
 						proceedWithCache(cachedResponse.call)
 						return@intercept
 					} else {
 						// request using etag/last-modified
+						context.attributes.put(
+							attributeKeyCacheStatusForwardReason,
+							CacheStatusForwardReason.MISS,
+						)
 						context.withCacheHeader(cacheHandle)
 					}
 
@@ -110,7 +119,12 @@ class Ubiquache private constructor(
 						proceed()
 					} catch (e: Throwable) {
 						if (context.attributes.getOrNull(attributeKeyUseCacheOnFailure) == true && cacheHandle.hasValidCachedResource()) {
-							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData)
+							val cachedResponse = cacheManager.getCachedResponse(
+								cacheHandle,
+								scope,
+								requestData,
+								cacheStatusForwardHeader(CacheStatusForwardReason.MISS),
+							)
 							proceedWithCache(cachedResponse.call)
 						} else {
 							throw e
@@ -123,9 +137,15 @@ class Ubiquache private constructor(
 				val requestAttributes = response.request.attributes
 				val cacheHandle = requestAttributes.getOrNull(attributeKeyCacheHandle) ?: return@intercept
 				val useCacheOnFailure = requestAttributes.getOrNull(attributeKeyUseCacheOnFailure) == true
+				val forwardReason = requestAttributes.getOrNull(attributeKeyCacheStatusForwardReason) ?: CacheStatusForwardReason.MISS
 
 				if (useCacheOnFailure && response.status.value in 500..599) {
-					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, response.request.toHttpRequestData())
+					val cachedResponse = cacheManager.getCachedResponse(
+						cacheHandle,
+						scope,
+						response.request.toHttpRequestData(),
+						cacheStatusForwardHeader(forwardReason),
+					)
 					response.complete()
 					proceedWith(cachedResponse)
 					return@intercept
@@ -133,14 +153,23 @@ class Ubiquache private constructor(
 
 				if (response.status == HttpStatusCode.NotModified && response.request.expectNotModified()) {
 					cacheManager.updateCacheHeaders(cacheHandle, response)
-					val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, response.request.toHttpRequestData())
+					val cachedResponse = cacheManager.getCachedResponse(
+						cacheHandle,
+						scope,
+						response.request.toHttpRequestData(),
+						cacheStatusForwardHeader(forwardReason, response.status.value),
+					)
 					response.complete()
 					proceedWith(cachedResponse)
 					return@intercept
 				}
 
 				if (response.isCacheable()) {
-					val cachedResponse = cacheManager.storeCacheableResponse(cacheHandle, response)
+					val cachedResponse = cacheManager.storeCacheableResponse(
+						cacheHandle,
+						response,
+						cacheStatusForwardHeader(forwardReason, stored = true),
+					)
 					if (cachedResponse != null) {
 						proceedWith(cachedResponse)
 						return@intercept
@@ -166,7 +195,7 @@ class Ubiquache private constructor(
 			val response = HttpResponseData(
 				statusCode = HttpStatusCode.GatewayTimeout, //developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control#other
 				requestTime = GMTDate(),
-				headers = headersOf(HttpHeaders.XUbiquache, CacheControlValue.ONLY_IF_CACHED.value),
+				headers = headersOf(),
 				version = HttpProtocolVersion.HTTP_1_1,
 				body = ByteReadChannel(ByteArray(0)),
 				callContext = request.executionContext
