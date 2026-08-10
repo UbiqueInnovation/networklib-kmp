@@ -93,12 +93,11 @@ A request is uniquely identified by the following attributes. If any of these va
 
 #### Cache Status
 
-Responses served or stored by Ubiquache include an RFC 9211 [`Cache-Status`](https://www.rfc-editor.org/rfc/rfc9211) response header. Ubiquache appends its structured-field member without replacing status entries from upstream caches.
+Responses served or stored by Ubiquache include an RFC 9211 [`Cache-Status`](https://www.rfc-editor.org/rfc/rfc9211) response header. 
+Ubiquache appends its structured-field member without replacing status entries from upstream caches.
 
 * `"ubiquache"; hit` – The response was served directly from Ubiquache.
 * `"ubiquache"; fwd=miss; stored` – No usable cached response existed; the response was fetched and stored.
-* `"ubiquache"; fwd=request; stored` – A request cache directive required a forward request, and the response was stored.
-* `"ubiquache"; fwd=miss; fwd-status=304` – A cached response was revalidated and the next hop returned `304 Not Modified`.
 
 ```kotlin
 val response = client.get(url)
@@ -106,7 +105,8 @@ val wasCacheHit = response.isCacheHit()
 val wasReadFromCache = response.isReadFromCache()
 ```
 
-`isCacheHit()` is true only when Ubiquache served the response without forwarding. `isReadFromCache()` also covers responses reconstructed after validation and responses served as a fallback after a failed refresh.
+`isCacheHit()` is true only when Ubiquache served the response without forwarding. `isReadFromCache()` also covers responses 
+reconstructed after validation (e.g. status 304) and responses served as a fallback after a failed refresh.
 
 #### Cache Management
 
@@ -148,6 +148,27 @@ stateflow.collect { state ->
 ```
 
 In case of an error, the `ktorStateFlow` stops and has to be restarted manually, either with `errorState.retry()` or with `stateflow.forceReload()`.
+
+#### Transforming Responses
+Use the `resultTransform` overload to build a custom result model from a successful `HttpResponse`, including its headers.
+
+```kotlin
+data class ApiResult(
+    val model: MyModel,
+    val eTag: String?,
+)
+
+val stateFlow = ktorStateFlow(
+    resultTransform = { response ->
+        ApiResult(
+            model = response.body(),
+            eTag = response.headers[HttpHeaders.ETag],
+        )
+    },
+) { cacheControl ->
+    client.get(url) { cacheControl(cacheControl) }
+}
+```
 
 #### Dynamic Request Parameter
 

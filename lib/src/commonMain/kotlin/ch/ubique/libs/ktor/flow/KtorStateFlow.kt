@@ -76,6 +76,37 @@ inline fun <reified T> ktorStateFlow(
 		request
 	)
 
+/**
+ * Builds a StateFlow that executes a request repeatedly with an interval given by the response headers and maps each
+ * successful response to a result value.
+ *
+ * The [request] block starts executing when the returned [StateFlow] becomes active. Refresh, cache, and error
+ * handling behavior is the same as [ktorStateFlow].
+ *
+ * @param context The CoroutineContext to run the given request block in. Defaults to [Dispatchers.IO].
+ * @param defaultRefreshInterval The fallback refresh interval in millis, used if nothing is specified by the response headers.
+ * @param defaultRefreshBackoff The fallback minimum refresh delay in millis, used if nothing is specified by the response headers.
+ * @param cancellationTimeout The timeout in millis before cancelling the request block if there are no active collectors.
+ * @param resultTransform Transforms a successful HTTP response into the value emitted in the result state.
+ * @param request The block to run to execute the request when the [StateFlow] has active observers.
+ */
+fun <T> ktorStateFlow(
+	context: CoroutineContext = Dispatchers.IO,
+	defaultRefreshInterval: Long? = null,
+	defaultRefreshBackoff: Long = DEFAULT_REFRESH_BACKOFF,
+	cancellationTimeout: Long = CANCELLATION_DELAY,
+	resultTransform: suspend (HttpResponse) -> T,
+	request: suspend (cacheControl: String?) -> HttpResponse,
+): KtorStateFlow<RequestState<T>> =
+	ktorStateFlowWithTransform(
+		context,
+		defaultRefreshInterval,
+		defaultRefreshBackoff,
+		cancellationTimeout,
+		request,
+		resultTransform,
+	)
+
 @PublishedApi
 internal fun <T> ktorStateFlow(
 	typeInfo: TypeInfo,
@@ -85,15 +116,33 @@ internal fun <T> ktorStateFlow(
 	cancellationTimeout: Long,
 	request: suspend (cacheControl: String?) -> HttpResponse,
 ): KtorStateFlow<RequestState<T>> =
+	ktorStateFlowWithTransform(
+		context,
+		defaultRefreshInterval,
+		defaultRefreshBackoff,
+		cancellationTimeout,
+		request,
+	) { response ->
+		response.body(typeInfo)
+	}
+
+private fun <T> ktorStateFlowWithTransform(
+	context: CoroutineContext,
+	defaultRefreshInterval: Long?,
+	defaultRefreshBackoff: Long,
+	cancellationTimeout: Long,
+	request: suspend (cacheControl: String?) -> HttpResponse,
+	resultTransform: suspend (HttpResponse) -> T,
+): KtorStateFlow<RequestState<T>> =
 	KtorStateFlowImpl(context, cancellationTimeout, MutableStateFlow(Loading)) { forceFresh ->
 		try {
 			emit(Loading)
 			var repeat = true
 			if (forceFresh) {
-				repeat = loadAndWait(request, typeInfo, CacheControl.NO_CACHE, defaultRefreshInterval, defaultRefreshBackoff)
+				repeat = loadAndWait(request, CacheControl.NO_CACHE, defaultRefreshInterval, defaultRefreshBackoff, resultTransform)
 			} else {
 				try {
-					loadAndWait(request, typeInfo, CacheControl.ONLY_IF_CACHED, 0, 0)
+					loadAndWait(request, CacheControl.ONLY_IF_CACHED, 0, 0, resultTransform)
 				} catch (e: ResponseException) {
 					// ignore, continue
 				} catch (e: IOException) {
@@ -101,7 +150,7 @@ internal fun <T> ktorStateFlow(
 				}
 			}
 			while (repeat) {
-				repeat = loadAndWait(request, typeInfo, null, defaultRefreshInterval, defaultRefreshBackoff)
+				repeat = loadAndWait(request, null, defaultRefreshInterval, defaultRefreshBackoff, resultTransform)
 			}
 		} catch (e: CancellationException) {
 			// ignore
@@ -115,10 +164,10 @@ internal fun <T> ktorStateFlow(
 @OptIn(ExperimentalTime::class)
 private suspend fun <T> KtorStateFlowImpl<RequestState<T>>.loadAndWait(
 	request: suspend (cacheControl: String?) -> HttpResponse,
-	typeInfo: TypeInfo,
 	cacheControl: String?,
 	defaultRefreshInterval: Long?,
 	defaultRefreshBackoff: Long,
+	resultTransform: suspend (HttpResponse) -> T,
 ): Boolean {
 	val response = request(cacheControl)
 	if (cacheControl == CacheControl.ONLY_IF_CACHED) {
@@ -127,7 +176,7 @@ private suspend fun <T> KtorStateFlowImpl<RequestState<T>>.loadAndWait(
 		}
 	}
 	response.throwIfNotSuccessful()
-	emit(Result(response.body(typeInfo)))
+	emit(Result(resultTransform(response)))
 	val nextRefresh = response.nextRefreshDate() ?: response.expiresDate()
 	val backoff = response.backoff()?.coerceAtLeast(0) ?: defaultRefreshBackoff
 	val currentTimeMillis = Clock.System.now().toEpochMilliseconds()
