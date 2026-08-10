@@ -106,12 +106,13 @@ class Ubiquache private constructor(
 						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, cacheStatusHitHeader())
 						proceedWithCache(cachedResponse.call)
 						return@intercept
+					} else if (cacheHandle.cachedFilesExist()) {
+						// expired response; forward and add validators when available
+						context.attributes.put(attributeKeyCacheStatusForwardReason, CacheStatusForwardReason.STALE)
+						context.withCacheHeader(cacheHandle)
 					} else {
-						// request using etag/last-modified
-						context.attributes.put(
-							attributeKeyCacheStatusForwardReason,
-							CacheStatusForwardReason.MISS,
-						)
+						// cold cache miss
+						context.attributes.put(attributeKeyCacheStatusForwardReason, CacheStatusForwardReason.MISS)
 						context.withCacheHeader(cacheHandle)
 					}
 

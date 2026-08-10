@@ -76,7 +76,7 @@ fun HttpRequestBuilder.cacheControl(cacheControl: String?) {
  */
 fun HttpResponse.isCacheHit(cacheName: String = UbiquacheCacheStatusName): Boolean {
 	return cacheStatusValues().any { cacheStatus ->
-		cacheStatus.value == "\"$cacheName\"" &&
+		cacheStatus.matchesCacheName(cacheName) &&
 				cacheStatus.params.any { it.name == "hit" && it.value.isEmpty() }
 	}
 }
@@ -89,7 +89,7 @@ fun HttpResponse.isCacheHit(cacheName: String = UbiquacheCacheStatusName): Boole
  */
 fun HttpResponse.isReadFromCache(cacheName: String = UbiquacheCacheStatusName): Boolean {
 	return cacheStatusValues().any { cacheStatus ->
-		if (cacheStatus.value != "\"$cacheName\"") {
+		if (!cacheStatus.matchesCacheName(cacheName)) {
 			return@any false
 		}
 		val hasHit = cacheStatus.params.any { it.name == "hit" && it.value.isEmpty() }

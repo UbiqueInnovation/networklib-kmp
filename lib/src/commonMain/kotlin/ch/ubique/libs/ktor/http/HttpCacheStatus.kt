@@ -16,6 +16,7 @@ const val UbiquacheCacheStatusName = "ubiquache"
 internal object CacheStatusForwardReason {
 	const val MISS = "miss"
 	const val REQUEST = "request"
+	const val STALE = "stale"
 }
 
 internal fun cacheStatusHitHeader(): Headers {
@@ -41,4 +42,8 @@ internal fun HttpResponse.cacheStatusValues(): List<HeaderValue> {
 	return headers.getAll(HttpHeaders.CacheStatus)
 		.orEmpty()
 		.flatMap { parseHeaderValue(it) }
+}
+
+internal fun HeaderValue.matchesCacheName(cacheName: String): Boolean {
+	return value == cacheName || value == "\"$cacheName\""
 }

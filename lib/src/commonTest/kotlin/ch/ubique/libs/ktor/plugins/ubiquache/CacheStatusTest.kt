@@ -61,7 +61,7 @@ class CacheStatusTest {
 	}
 
 	@Test
-	fun validationIsReportedAsMissForwardWithStatus() {
+	fun validationIsReportedAsStaleForwardWithStatus() {
 		withServer { number, _ ->
 			when (number) {
 				1 -> respond(
@@ -85,7 +85,7 @@ class CacheStatusTest {
 			client.getMockResponseBlocking()
 			skipTime(1_500)
 			val response = client.getMockResponseBlocking()
-			assertCacheStatus(response, "; fwd=miss; fwd-status=304")
+			assertCacheStatus(response, "; fwd=stale; fwd-status=304")
 			assertFalse(response.isCacheHit())
 			assertTrue(response.isReadFromCache())
 		}
@@ -204,6 +204,26 @@ class CacheStatusTest {
 			assertFalse(response.isCacheHit())
 			assertTrue(response.isCacheHit("custom"))
 			assertFalse(response.isReadFromCache())
+			assertTrue(response.isReadFromCache("custom"))
+		} finally {
+			client.close()
+		}
+	}
+
+	@Test
+	fun cacheStatusHelpersAcceptTokenCacheNames() {
+		val engine = withServer { _, _ ->
+			respond(
+				content = "cached",
+				headers = headers {
+					header(HttpHeaders.CacheStatus, "custom; hit")
+				},
+			)
+		}
+		val client = HttpClient(engine)
+		try {
+			val response = client.getMockResponseBlocking()
+			assertTrue(response.isCacheHit("custom"))
 			assertTrue(response.isReadFromCache("custom"))
 		} finally {
 			client.close()
