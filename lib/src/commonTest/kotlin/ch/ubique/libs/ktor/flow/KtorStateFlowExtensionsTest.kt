@@ -9,15 +9,57 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.fail
 
 class KtorStateFlowExtensionsTest {
+
+	@Test
+	fun asStateFlow() = runTest {
+		val backingFlow = MutableStateFlow<Int?>(null)
+		val ktorFlow = object : KtorStateFlow<Int?>(backingFlow) {
+			override fun reload() = fail("Should not be called")
+			override fun forceReload() = fail("Should not be called")
+		}
+		val stateFlow: StateFlow<Int?> = ktorFlow.asStateFlow()
+
+		assertFalse(stateFlow is KtorStateFlow<*>)
+		assertFalse(stateFlow is MutableStateFlow<*>)
+		assertNull(stateFlow.value)
+		assertEquals(listOf(null), stateFlow.replayCache)
+
+		backingFlow.value = 1
+		assertEquals(1, stateFlow.value)
+		assertEquals(listOf(1), stateFlow.replayCache)
+		assertEquals(0, backingFlow.subscriptionCount.value)
+
+		stateFlow.test {
+			assertEquals(1, awaitItem())
+			assertEquals(1, backingFlow.subscriptionCount.value)
+
+			backingFlow.value = 2
+			assertEquals(2, awaitItem())
+			assertEquals(2, stateFlow.value)
+			assertEquals(listOf(2), stateFlow.replayCache)
+
+			backingFlow.value = null
+			assertNull(awaitItem())
+			assertNull(stateFlow.value)
+			assertEquals(listOf(null), stateFlow.replayCache)
+
+			cancelAndIgnoreRemainingEvents()
+		}
+
+		assertEquals(0, backingFlow.subscriptionCount.value)
+	}
 
 	@Test
 	fun flatMapLatestToKtorStateFlow() = runTest {
@@ -95,7 +137,7 @@ class KtorStateFlowExtensionsTest {
 				}
 			}
 
-			stateFlow.test {
+			stateFlow.asStateFlow().test {
 				run {
 					val loading = awaitItem()
 					assertIs<RequestState.Loading>(loading)
