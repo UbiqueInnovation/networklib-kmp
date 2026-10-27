@@ -149,6 +149,14 @@ stateflow.collect { state ->
 
 In case of an error, the `ktorStateFlow` stops and has to be restarted manually, either with `errorState.retry()` or with `stateflow.forceReload()`.
 
+Use `asStateFlow()` to expose only the standard `StateFlow` API, keeping reload controls on the original instance:
+
+```kotlin
+import ch.ubique.libs.ktor.flow.asStateFlow
+
+val readOnlyStateFlow = stateflow.asStateFlow()
+```
+
 #### Transforming Responses
 Use the `resultTransform` overload to build a custom result model from a successful `HttpResponse`, including its headers.
 

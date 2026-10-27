@@ -38,7 +38,7 @@ class KtorStateFlowTest {
 				}
 			}
 
-			stateFlow.test {
+			stateFlow.asStateFlow().test {
 				val loading = awaitItem()
 				assertIs<RequestState.Loading>(loading)
 
@@ -221,7 +221,7 @@ class KtorStateFlowTest {
 						cacheControl(cacheControl)
 					}
 				}
-				stateFlow.test {
+				stateFlow.asStateFlow().test {
 					run {
 						val loading = awaitItem()
 						assertIs<RequestState.Loading>(loading)
@@ -263,7 +263,7 @@ class KtorStateFlowTest {
 						cacheControl(cacheControl)
 					}
 				}
-				stateFlow.test {
+				stateFlow.asStateFlow().test {
 					run {
 						val loading = awaitItem()
 						assertIs<RequestState.Loading>(loading)
@@ -414,7 +414,7 @@ class KtorStateFlowTest {
 				}
 			}
 
-			stateFlow.test {
+			stateFlow.asStateFlow().test {
 				val loading = awaitItem()
 				assertIs<RequestState.Loading>(loading)
 
