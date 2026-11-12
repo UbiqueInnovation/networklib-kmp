@@ -35,7 +35,7 @@ class CacheStatusTest {
 			assertFalse(miss.isReadFromCache())
 
 			val hit = client.getMockResponseBlocking()
-			assertCacheStatus(hit, "; hit")
+			assertCacheStatus(hit, "; hit; ttl=[0-9]+".toRegex())
 			assertTrue(hit.isCacheHit())
 			assertTrue(hit.isReadFromCache())
 		}
@@ -228,6 +228,11 @@ class CacheStatusTest {
 		} finally {
 			client.close()
 		}
+	}
+
+	private fun assertCacheStatus(response: io.ktor.client.statement.HttpResponse, expectedSuffix: Regex) {
+		val cacheStatus = response.headers.getAll(HttpHeaders.CacheStatus).orEmpty()
+		assertTrue(cacheStatus.any { it.startsWith("\"ubiquache\"") && expectedSuffix.matches(it.removePrefix("\"ubiquache\"")) })
 	}
 
 	private fun assertCacheStatus(response: io.ktor.client.statement.HttpResponse, expectedSuffix: String) {

@@ -1,11 +1,14 @@
 package ch.ubique.libs.ktor.plugins.ubiquache
 
 import ch.ubique.libs.ktor.*
+import ch.ubique.libs.ktor.cache.extensions.cacheHitTTL
 import ch.ubique.libs.ktor.common.now
 import ch.ubique.libs.ktor.common.skipTime
 import ch.ubique.libs.ktor.http.*
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.network.sockets.SocketTimeoutException
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.utils.CacheControl
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headers
@@ -212,6 +215,48 @@ class ResponseCachingTest {
 				assertEquals("cmrqnfpi", response.bodyAsTextBlocking())
 				assertEquals(3, requestHistory.size)
 			}
+		}
+	}
+
+	@Test
+	fun maxstale_cacheHitTTL() {
+		withServer { number, request ->
+			when (number) {
+				1 -> {
+					assertNull(request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "xohbeevi",
+						headers = headers {
+							header(HttpHeaders.CacheControl, "max-age=1")
+							header(HttpHeaders.ETag, "60158417312")
+						}
+					)
+				}
+				else -> fail("Unexpected request number: $number, ${request.headers}")
+			}
+		}.testUbiquache { client ->
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("xohbeevi", response.bodyAsTextBlocking())
+				assertEquals(1, requestHistory.size)
+			}
+			skipTime(1500)
+			run {
+				val response = client.getMockResponseBlocking {
+					headers.header(HttpHeaders.CacheControl, CacheControl.ONLY_IF_CACHED)
+				}
+				assertEquals(HttpStatusCode.GatewayTimeout, response.status)
+			}
+			run {
+				val response = client.getMockResponseBlocking {
+					headers.header(HttpHeaders.CacheControl, "${CacheControl.ONLY_IF_CACHED}, ${CacheControl.MAX_STALE}=10")
+				}
+				assertEquals("xohbeevi", response.bodyAsTextBlocking())
+				val ttl = response.cacheHitTTL()
+				assertNotNull(ttl)
+				assertTrue(ttl <= -1 * 1000) // returned in millis, but Cache-Status is in seconds
+			}
+			assertEquals(1, requestHistory.size)
 		}
 	}
 

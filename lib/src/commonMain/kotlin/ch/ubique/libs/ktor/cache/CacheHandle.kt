@@ -1,7 +1,17 @@
 package ch.ubique.libs.ktor.cache
 
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
-import ch.ubique.libs.ktor.common.*
+import ch.ubique.libs.ktor.cache.extensions.maxStale
+import ch.ubique.libs.ktor.cache.extensions.minFresh
+import ch.ubique.libs.ktor.common.delete
+import ch.ubique.libs.ktor.common.exists
+import ch.ubique.libs.ktor.common.now
+import ch.ubique.libs.ktor.common.readLines
+import ch.ubique.libs.ktor.common.size
+import ch.ubique.libs.ktor.common.source
+import ch.ubique.libs.ktor.common.writeByteReadChannel
+import ch.ubique.libs.ktor.common.writeText
+import io.ktor.http.HeaderValue
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.io.Source
 import kotlinx.io.files.Path
@@ -26,8 +36,17 @@ internal class CacheHandle(
 		} ?: CacheMetadata()
 	}
 
-	fun hasValidCachedResource(): Boolean {
-		return !isExpired() && cachedFilesExist()
+	fun hasValidCachedResource(requestCacheControl: List<HeaderValue>? = null, now: Long): Boolean {
+		if (!liveCacheMetadata.isValid()) {
+			return false
+		}
+
+		val ttl = getTTL(now)
+		val maxStale = requestCacheControl?.maxStale() ?: 0;
+		val minFresh = requestCacheControl?.minFresh()
+		val ttlOk = (ttl > 0 || (-ttl < maxStale)) && (minFresh == null || ttl > minFresh)
+
+		return ttlOk && cachedFilesExist()
 	}
 
 	fun cachedFilesExist(): Boolean {
@@ -89,8 +108,12 @@ internal class CacheHandle(
 		} ?: false
 	}
 
-	fun isExpired(): Boolean {
-		return liveCacheMetadata.expires < now()
+	fun getTTL(now: Long): Long {
+		return liveCacheMetadata.expires - now;
+	}
+
+	fun isExpired(now: Long): Boolean {
+		return getTTL(now) < 0;
 	}
 
 	fun getETag(): String? {
@@ -117,7 +140,11 @@ internal data class CacheMetadata(
 	var etag: String? = null,
 	var lastModified: Long? = null,
 	var size: Long = -1,
-)
+) {
+	fun isValid(): Boolean {
+		return size >= 0
+	}
+}
 
 internal data class CacheData(
 	val head: List<String>,
