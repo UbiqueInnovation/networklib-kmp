@@ -8,7 +8,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HeaderValue
 import io.ktor.http.HttpHeaders
 import io.ktor.http.cacheControl
-import io.ktor.http.parseHeaderValue
+import kotlin.collections.firstOrNull
 
 /**
  * Get the date of this response.
@@ -54,9 +54,25 @@ fun HttpResponse.backoff(): Long? {
  * Get the Cache-Control max-age value.
  * @return max-age in millis.
  */
-fun List<HeaderValue>.maxAge(): Long? {
-	val maxAgeKey = "max-age"
-	return firstOrNull { it.value.startsWith(maxAgeKey) }
+fun List<HeaderValue>.maxAge(): Long? =
+	extractDurationValueAsMillis(this, "max-age")
+
+/**
+ * Get the Cache-Control max-stale value.
+ * @return max-stale in millis.
+ */
+fun List<HeaderValue>.maxStale(): Long? =
+	extractDurationValueAsMillis(this, "max-stale")
+
+/**
+ * Get the Cache-Control min-fresh value.
+ * @return min-fresh in millis.
+ */
+fun List<HeaderValue>.minFresh(): Long? =
+	extractDurationValueAsMillis(this, "min-fresh")
+
+private fun extractDurationValueAsMillis(values: List<HeaderValue>, key: String): Long? {
+	return values.firstOrNull { it.value.startsWith(key) }
 		?.value
 		?.split("=")
 		?.getOrNull(1)

@@ -19,8 +19,8 @@ internal object CacheStatusForwardReason {
 	const val STALE = "stale"
 }
 
-internal fun cacheStatusHitHeader(): Headers {
-	return headersOf(HttpHeaders.CacheStatus, "\"$UbiquacheCacheStatusName\"; hit")
+internal fun cacheStatusHitHeader(ttl: Long): Headers {
+	return headersOf(HttpHeaders.CacheStatus, "\"$UbiquacheCacheStatusName\"; hit; ttl=${ttl.div(1000)}")
 }
 
 internal fun cacheStatusForwardHeader(

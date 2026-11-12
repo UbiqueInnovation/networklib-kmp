@@ -102,12 +102,13 @@ internal class CacheManager(
 	}
 
 	private fun HttpResponse.getCacheMetadata(): CacheMetadata {
-		val backoffDate = backoff()?.plus(now())
-		val expires = (expiresDate() ?: 0L).coerceAtLeast(backoffDate)
+		val now = now()
+		val backoffDate = backoff()?.plus(now)
+		val expires = (expiresDate() ?: 0L).coerceAtLeast(backoffDate).coerceAtLeast(now)
 		val nextRefresh = (nextRefreshDate() ?: expires).coerceAtLeast(backoffDate)
 		val etag = headers[HttpHeaders.ETag]
 		val lastModified = headers[HttpHeaders.LastModified]?.let { it.toHttpDate()?.timestamp }
-		return CacheMetadata(now(), nextRefresh, expires, etag, lastModified)
+		return CacheMetadata(now, nextRefresh, expires, etag, lastModified)
 	}
 
 	fun getCachedResponse(handle: CacheHandle, client: HttpClient, request: HttpRequestData, injectHeader: Headers? = null): HttpResponse {

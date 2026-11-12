@@ -5,6 +5,7 @@ import ch.ubique.libs.ktor.cache.CacheManager
 import ch.ubique.libs.ktor.cache.db.NetworkCacheDatabase
 import ch.ubique.libs.ktor.cache.db.RecoveringDriver
 import ch.ubique.libs.ktor.common.deleteRecursively
+import ch.ubique.libs.ktor.common.now
 import ch.ubique.libs.ktor.http.*
 import io.ktor.client.HttpClient
 import io.ktor.client.call.HttpClientCall
@@ -81,10 +82,11 @@ class Ubiquache private constructor(
 				context.attributes.put(attributeKeyCacheHandle, cacheHandle)
 
 				cacheManager.withLock(cacheHandle) {
+					val now = now()
 					if (CacheControlValue.ONLY_IF_CACHED in cacheControl) {
 						// force cached response, do not make network request
-						if (cacheHandle.hasValidCachedResource()) {
-							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, cacheStatusHitHeader())
+						if (cacheHandle.hasValidCachedResource(cacheControl, now)) {
+							val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, cacheStatusHitHeader(cacheHandle.getTTL(now)))
 							proceedWithCache(cachedResponse.call)
 						} else {
 							proceedWithCachedResourceNotFound(scope)
@@ -101,9 +103,9 @@ class Ubiquache private constructor(
 						context.attributes.put(attributeKeyUseCacheOnFailure, true)
 						context.attributes.put(attributeKeyCacheStatusForwardReason, CacheStatusForwardReason.MISS)
 						context.withCacheHeader(cacheHandle)
-					} else if (cacheHandle.hasValidCachedResource()) {
+					} else if (cacheHandle.hasValidCachedResource(cacheControl, now)) {
 						// cache hit
-						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, cacheStatusHitHeader())
+						val cachedResponse = cacheManager.getCachedResponse(cacheHandle, scope, requestData, cacheStatusHitHeader(cacheHandle.getTTL(now)))
 						proceedWithCache(cachedResponse.call)
 						return@intercept
 					} else if (cacheHandle.cachedFilesExist()) {
@@ -119,7 +121,8 @@ class Ubiquache private constructor(
 					try {
 						proceed()
 					} catch (e: Throwable) {
-						if (context.attributes.getOrNull(attributeKeyUseCacheOnFailure) == true && cacheHandle.hasValidCachedResource()) {
+						val now = now()
+						if (context.attributes.getOrNull(attributeKeyUseCacheOnFailure) == true && cacheHandle.hasValidCachedResource(cacheControl, now)) {
 							val cachedResponse = cacheManager.getCachedResponse(
 								cacheHandle,
 								scope,
