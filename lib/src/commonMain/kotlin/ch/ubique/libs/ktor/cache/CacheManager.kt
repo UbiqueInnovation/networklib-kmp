@@ -19,6 +19,7 @@ import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.request
 import io.ktor.http.*
 import io.ktor.util.date.GMTDate
+import io.ktor.util.filter
 import io.ktor.util.flattenEntries
 import io.ktor.util.sha1
 import io.ktor.utils.io.ByteReadChannel
@@ -83,9 +84,7 @@ internal class CacheManager(
 		val cacheMetadata = response.getCacheMetadata()
 
 		if (now() < cacheMetadata.expires || cacheMetadata.etag != null || cacheMetadata.lastModified != null) {
-			val head = StatusLine.get(response).toString() + "\r\n" +
-					response.headers.flattenEntries().joinToString(separator = "\r\n") { it.first + ": " + it.second }
-
+			val head = formattedHead(StatusLine.get(response), response.headers)
 			val bodyStream = response.bodyAsChannel()
 
 			cacheDirectory.ensureDirectory()
@@ -97,9 +96,43 @@ internal class CacheManager(
 		}
 	}
 
-	internal fun updateCacheHeaders(handle: CacheHandle, response: HttpResponse) {
-		handle.updateCacheMetadata(response.getCacheMetadata())
+	internal fun formattedHead(statusLine: StatusLine, headers: Headers): String {
+		return statusLine.toString() + "\r\n" + headers.flattenEntries()
+			.joinToString(separator = "\r\n") { it.first + ": " + it.second }
 	}
+
+	internal fun parseFormattedHead(head: List<String>, injectHeader: Headers? = null): Pair<StatusLine, Headers> {
+		// status line
+		val statusLine = StatusLine.parse(head.first())
+
+		// headers
+		val headers = Headers.build {
+			for (headerLine in head.drop(1)) {
+				val (name, value) = headerLine.split(':', limit = 2)
+				append(name.trim(), value.trim())
+			}
+			injectHeader?.let {
+				appendAll(it)
+			}
+		}
+		return Pair(statusLine, headers)
+	}
+
+	internal fun updateCacheHeaders(handle: CacheHandle, response: HttpResponse) {
+		handle.updateCacheMetadata(response.getCacheMetadata()) { oldHead: List<String> ->
+			val (oldStatusLine, oldHeaders) = parseFormattedHead(oldHead)
+			formattedHead(oldStatusLine, Headers.build {
+				appendAll(response.headers.filter { key, value -> !headersExcludedForUpdate.contains(key) })
+				appendAll(oldHeaders.filter { key, value -> headersExcludedForUpdate.contains(key) })
+			})
+		}
+	}
+
+	internal val headersExcludedForUpdate = listOf(
+		HttpHeaders.ContentLength,
+		HttpHeaders.ContentEncoding,
+		HttpHeaders.ContentType,
+	)
 
 	private fun HttpResponse.getCacheMetadata(): CacheMetadata {
 		val now = now()
@@ -119,19 +152,7 @@ internal class CacheManager(
 	private fun readCachedResponse(handle: CacheHandle, client: HttpClient, request: HttpRequestData, injectHeader: Headers? = null): HttpResponse? {
 		val (head, body) = handle.getCachedData() ?: return null
 
-		// status line
-		val statusLine = StatusLine.parse(head.first())
-
-		// headers
-		val headers = headers {
-			for (headerLine in head.drop(1)) {
-				val (name, value) = headerLine.split(':', limit = 2)
-				append(name.trim(), value.trim())
-			}
-			injectHeader?.let {
-				appendAll(it)
-			}
-		}
+		val (statusLine, headers) = parseFormattedHead(head, injectHeader)
 
 		val nowDate = GMTDate(now())
 		val response = object : HttpResponse() {

@@ -11,7 +11,9 @@ import ch.ubique.libs.ktor.common.size
 import ch.ubique.libs.ktor.common.source
 import ch.ubique.libs.ktor.common.writeByteReadChannel
 import ch.ubique.libs.ktor.common.writeText
+import ch.ubique.libs.ktor.common.writeTextAtomic
 import io.ktor.http.HeaderValue
+import io.ktor.http.Headers
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.io.Source
 import kotlinx.io.files.Path
@@ -82,7 +84,13 @@ internal class CacheHandle(
 		}
 	}
 
-	fun updateCacheMetadata(cacheMetadata: CacheMetadata) {
+	fun updateCacheMetadata(cacheMetadata: CacheMetadata, updateHead: (oldHead: List<String>) -> String) {
+		val head = updateHead(headCacheFile.readLines())
+		try {
+			headCacheFile.writeTextAtomic(head)
+		} catch (e: Exception) {
+			return
+		}
 		cacheMetadata.apply {
 			db.update(lastAccess, nextRefresh, expires, etag, lastModified, cacheTag)
 		}
