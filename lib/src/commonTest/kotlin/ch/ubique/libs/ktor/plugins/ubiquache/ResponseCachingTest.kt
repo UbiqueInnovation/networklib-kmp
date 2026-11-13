@@ -460,6 +460,62 @@ class ResponseCachingTest {
 	}
 
 	@Test
+	fun etag_matchChangedHeader() {
+		withServer { number, request ->
+			when (number) {
+				1 -> {
+					assertNull(request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "aeghouph",
+						headers = headers {
+							header(HttpHeaders.ETag, "804900423")
+							header(HttpHeaders.ContentLength, "8")
+							header(HttpHeaders.CacheControl, "max-age=0")
+							header(HttpHeaders.XRequestId, "1")
+							header(HttpHeaders.ContentType, "text/plain")
+						}
+					)
+				}
+				2 -> {
+					assertEquals("804900423", request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "",
+						status = HttpStatusCode.NotModified,
+						headers = headers {
+							header(HttpHeaders.ETag, "804900423")
+							header(HttpHeaders.CacheControl, "max-age=1")
+							header(HttpHeaders.XRequestId, "2")
+							// inconsistent, should be ignored
+							header(HttpHeaders.ContentType, "image/png")
+							header(HttpHeaders.ContentEncoding, "gzip")
+						}
+					)
+				}
+				else -> fail("Unexpected request number: $number")
+			}
+		}.testUbiquache { client ->
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("aeghouph", response.bodyAsTextBlocking())
+				assertEquals(1, requestHistory.size)
+			}
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("aeghouph", response.bodyAsTextBlocking())
+				// Updated headers:
+				assertEquals("max-age=1", response.headers[HttpHeaders.CacheControl])
+				assertEquals("2", response.headers[HttpHeaders.XRequestId])
+				// Original values for these specific Content-... headers
+				assertEquals("8", response.headers[HttpHeaders.ContentLength])
+				assertEquals("text/plain", response.headers[HttpHeaders.ContentType])
+				assertNull(response.headers[HttpHeaders.ContentEncoding])
+
+				assertEquals(2, requestHistory.size)
+			}
+		}
+	}
+
+	@Test
 	fun etag_mismatch() {
 		withServer { number, request ->
 			when (number) {

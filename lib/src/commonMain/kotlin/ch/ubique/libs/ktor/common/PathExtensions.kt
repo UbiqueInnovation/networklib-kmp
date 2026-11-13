@@ -3,6 +3,7 @@ package ch.ubique.libs.ktor.common
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.core.writeText
 import io.ktor.utils.io.readBuffer
+import kotlinx.io.IOException
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
@@ -28,6 +29,18 @@ internal fun Path.sink() = fs.sink(this).buffered()
 
 internal fun Path.writeText(text: String) = sink().use {
 	it.writeText(text)
+}
+
+internal fun Path.writeTextAtomic(text: String, tmpFileSuffix: String = ".tmp") {
+	val tmp = parent?.let { Path(it, name + tmpFileSuffix) } ?: Path(name + tmpFileSuffix)
+	if (tmp.exists()) {
+		throw IOException("temporary file for atomic file write already exists")
+	}
+	tmp.writeText(text)
+	SystemFileSystem.atomicMove(
+		source = tmp,
+		destination = this,
+	)
 }
 
 internal suspend fun Path.writeByteReadChannel(channel: ByteReadChannel) = sink().use {
