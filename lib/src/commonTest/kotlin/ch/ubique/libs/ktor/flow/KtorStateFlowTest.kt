@@ -22,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlin.test.*
+import kotlin.time.Duration.Companion.seconds
 
 class KtorStateFlowTest {
 
@@ -167,6 +168,90 @@ class KtorStateFlowTest {
 				}
 				assertEquals(2, responseHistory.size)
 			}
+		}
+	}
+
+	@Test
+	fun staleWhileRevalidate() = runTest {
+		withServer { number, request ->
+			respond(
+				content = "#$number",
+				headers = headers {
+					header(HttpHeaders.CacheControl, "max-age=10, stale-while-revalidate=100")
+				}
+			)
+		}.testUbiquache { client ->
+			run {
+				val stateFlow = ktorStateFlow<String> { cacheControl ->
+					client.get("http://test/") {
+						cacheControl(cacheControl)
+					}
+				}
+				stateFlow.test {
+					val loading = awaitItem()
+					assertIs<RequestState.Loading>(loading)
+
+					val result = awaitItem()
+					assertIs<RequestState.Result<String>>(result)
+					assertEquals("#1", result.data)
+				}
+				assertEquals(1, responseHistory.size)
+			}
+			// Fresh from Cache
+			skipTime(1.seconds)
+			run {
+				val stateFlow = ktorStateFlow<String> { cacheControl ->
+					client.get("http://test/") {
+						cacheControl(cacheControl)
+					}
+				}
+				stateFlow.test {
+					val loading = awaitItem()
+					assertIs<RequestState.Loading>(loading)
+
+					val result = awaitItem()
+					assertIs<RequestState.Result<String>>(result)
+					assertEquals("#1", result.data)
+				}
+			}
+			// Stale from cache
+			skipTime(11.seconds)
+			run {
+				val stateFlow = ktorStateFlow<String> { cacheControl ->
+					client.get("http://test/") {
+						cacheControl(cacheControl)
+					}
+				}
+				stateFlow.test {
+					val loading = awaitItem()
+					assertIs<RequestState.Loading>(loading)
+
+					val resultCache = awaitItem()
+					assertIs<RequestState.Result<String>>(resultCache)
+					assertEquals("#1", resultCache.data)
+					val resultRefreshed = awaitItem()
+					assertIs<RequestState.Result<String>>(resultRefreshed)
+					assertEquals("#2", resultRefreshed.data)
+				}
+			}
+			// Too stale to return from cache
+			skipTime(111.seconds)
+			run {
+				val stateFlow = ktorStateFlow<String> { cacheControl ->
+					client.get("http://test/") {
+						cacheControl(cacheControl)
+					}
+				}
+				stateFlow.test {
+					val loading = awaitItem()
+					assertIs<RequestState.Loading>(loading)
+
+					val resultRefreshed = awaitItem()
+					assertIs<RequestState.Result<String>>(resultRefreshed)
+					assertEquals("#3", resultRefreshed.data)
+				}
+			}
+			assertEquals(3, responseHistory.size)
 		}
 	}
 

@@ -1,6 +1,7 @@
 package ch.ubique.libs.ktor.common
 
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 
 /** Used for testing only. */
@@ -13,4 +14,8 @@ internal inline fun now() = Clock.System.now().toEpochMilliseconds() + offset
 /** Used for testing only. */
 internal fun skipTime(millis: Long) {
 	offset += millis
+}
+
+internal fun skipTime(d: Duration) {
+	offset += d.inWholeMilliseconds
 }

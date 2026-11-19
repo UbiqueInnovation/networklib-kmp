@@ -1,9 +1,14 @@
 package ch.ubique.libs.ktor.flow
 
 import ch.ubique.libs.ktor.cache.extensions.backoff
+import ch.ubique.libs.ktor.cache.extensions.cacheControlValues
+import ch.ubique.libs.ktor.cache.extensions.cacheHitTTL
 import ch.ubique.libs.ktor.cache.extensions.expiresDate
 import ch.ubique.libs.ktor.cache.extensions.nextRefreshDate
 import ch.ubique.libs.ktor.cache.extensions.serverDate
+import ch.ubique.libs.ktor.cache.extensions.staleIfError
+import ch.ubique.libs.ktor.cache.extensions.staleWhileRevalidate
+import ch.ubique.libs.ktor.common.coerceAtLeast
 import ch.ubique.libs.ktor.flow.RequestState.*
 import ch.ubique.libs.ktor.http.throwIfNotSuccessful
 import ch.ubique.libs.ktor.plugins.Ubiquache
@@ -21,6 +26,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.io.IOException
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.max
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -142,7 +148,8 @@ private fun <T> ktorStateFlowWithTransform(
 				repeat = loadAndWait(request, CacheControl.NO_CACHE, defaultRefreshInterval, defaultRefreshBackoff, resultTransform)
 			} else {
 				try {
-					loadAndWait(request, CacheControl.ONLY_IF_CACHED, 0, 0, resultTransform)
+					val cacheControl = "${CacheControl.ONLY_IF_CACHED}, ${CacheControl.MAX_STALE}=${10 * 365 * 24 * 3600}"
+					loadAndWait(request, cacheControl, 0, 0, resultTransform)
 				} catch (e: ResponseException) {
 					// ignore, continue
 				} catch (e: IOException) {
@@ -170,17 +177,37 @@ private suspend fun <T> KtorStateFlowImpl<RequestState<T>>.loadAndWait(
 	resultTransform: suspend (HttpResponse) -> T,
 ): Boolean {
 	val response = request(cacheControl)
-	if (cacheControl == CacheControl.ONLY_IF_CACHED) {
+	if (cacheControl?.contains(CacheControl.ONLY_IF_CACHED) ?: false) {
 		if (response.call.request.attributes.getOrNull(Ubiquache.attributeKeyUbiquacheApplied) != true) {
 			throw IllegalStateException("KtorStateFlow requires the Ubiquache plugin to be installed")
 		}
 	}
 	response.throwIfNotSuccessful()
+
+	val ttl = response.cacheHitTTL()
+	val maxAllowedStale = response.cacheControlValues().let {
+		// Treat stale-if-error like stale-while-revalidate.
+		// Better than ignoring it, but more compliant would be to only emit the stale response if the subsequent load errors.
+		listOfNotNull(
+			it.staleWhileRevalidate(),
+			it.staleIfError()
+		).maxOrNull()
+	}
+	if (ttl != null && ttl < 0 && (maxAllowedStale == null || -ttl > maxAllowedStale)) {
+		// don't emit response if no stale-while-revalidate/stale-if-error header, or too stale
+		return true
+	}
+
 	emit(Result(resultTransform(response)))
+
+	if (ttl != null && ttl < 0) {
+		// no delay after stale load
+		return true;
+	}
 	val nextRefresh = response.nextRefreshDate() ?: response.expiresDate()
 	val backoff = response.backoff()?.coerceAtLeast(0) ?: defaultRefreshBackoff
 	val currentTimeMillis = Clock.System.now().toEpochMilliseconds()
-	val minDelay = if (cacheControl == CacheControl.ONLY_IF_CACHED) {
+	val minDelay = if (cacheControl?.contains(CacheControl.ONLY_IF_CACHED) ?: false) {
 		(backoff - (currentTimeMillis - (response.serverDate() ?: currentTimeMillis))).coerceAtLeast(0)
 	} else {
 		backoff

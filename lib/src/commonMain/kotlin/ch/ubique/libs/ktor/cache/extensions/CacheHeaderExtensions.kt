@@ -8,6 +8,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HeaderValue
 import io.ktor.http.HttpHeaders
 import io.ktor.http.cacheControl
+import io.ktor.http.parseHeaderValue
 import kotlin.collections.firstOrNull
 
 /**
@@ -50,6 +51,11 @@ fun HttpResponse.backoff(): Long? {
 		?: headers[HttpHeaders.XMsMetaBackoff]?.toLongOrNull()?.let { it * 1000L }
 }
 
+/** Get the parsed cache-control header of this response. */
+fun HttpResponse.cacheControlValues(): List<HeaderValue> {
+	return parseHeaderValue(headers[HttpHeaders.CacheControl])
+}
+
 /**
  * Get the Cache-Control max-age value.
  * @return max-age in millis.
@@ -70,6 +76,20 @@ fun List<HeaderValue>.maxStale(): Long? =
  */
 fun List<HeaderValue>.minFresh(): Long? =
 	extractDurationValueAsMillis(this, "min-fresh")
+
+/**
+ * Get the Cache-Control stale-while-revalidate value.
+ * @return stale-while-revalidate in millis.
+ */
+fun List<HeaderValue>.staleWhileRevalidate(): Long? =
+	extractDurationValueAsMillis(this, "stale-while-revalidate")
+
+/**
+ * Get the Cache-Control stale-if-error value.
+ * @return stale-if-error in millis.
+ */
+fun List<HeaderValue>.staleIfError(): Long? =
+	extractDurationValueAsMillis(this, "stale-if-error")
 
 private fun extractDurationValueAsMillis(values: List<HeaderValue>, key: String): Long? {
 	return values.firstOrNull { it.value.startsWith(key) }
