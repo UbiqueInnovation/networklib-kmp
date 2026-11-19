@@ -9,6 +9,7 @@ import ch.ubique.libs.ktor.cache.extensions.serverDate
 import ch.ubique.libs.ktor.cache.extensions.staleIfError
 import ch.ubique.libs.ktor.cache.extensions.staleWhileRevalidate
 import ch.ubique.libs.ktor.common.coerceAtLeast
+import ch.ubique.libs.ktor.common.now
 import ch.ubique.libs.ktor.flow.RequestState.*
 import ch.ubique.libs.ktor.http.throwIfNotSuccessful
 import ch.ubique.libs.ktor.plugins.Ubiquache
@@ -206,7 +207,7 @@ private suspend fun <T> KtorStateFlowImpl<RequestState<T>>.loadAndWait(
 	}
 	val nextRefresh = response.nextRefreshDate() ?: response.expiresDate()
 	val backoff = response.backoff()?.coerceAtLeast(0) ?: defaultRefreshBackoff
-	val currentTimeMillis = Clock.System.now().toEpochMilliseconds()
+	val currentTimeMillis = now()
 	val minDelay = if (cacheControl?.contains(CacheControl.ONLY_IF_CACHED) ?: false) {
 		(backoff - (currentTimeMillis - (response.serverDate() ?: currentTimeMillis))).coerceAtLeast(0)
 	} else {
