@@ -9,6 +9,7 @@ import io.ktor.http.HeaderValue
 import io.ktor.http.HttpHeaders
 import io.ktor.http.cacheControl
 import io.ktor.http.parseHeaderValue
+import kotlin.collections.firstOrNull
 
 /**
  * Get the date of this response.
@@ -50,13 +51,48 @@ fun HttpResponse.backoff(): Long? {
 		?: headers[HttpHeaders.XMsMetaBackoff]?.toLongOrNull()?.let { it * 1000L }
 }
 
+/** Get the parsed cache-control header of this response. */
+fun HttpResponse.cacheControlValues(): List<HeaderValue> {
+	return parseHeaderValue(headers[HttpHeaders.CacheControl])
+}
+
 /**
  * Get the Cache-Control max-age value.
  * @return max-age in millis.
  */
-fun List<HeaderValue>.maxAge(): Long? {
-	val maxAgeKey = "max-age"
-	return firstOrNull { it.value.startsWith(maxAgeKey) }
+fun List<HeaderValue>.maxAge(): Long? =
+	extractDurationValueAsMillis(this, "max-age")
+
+/**
+ * Get the Cache-Control max-stale value.
+ * @return max-stale in millis.
+ */
+fun List<HeaderValue>.maxStale(): Long? =
+	extractDurationValueAsMillis(this, "max-stale")
+
+/**
+ * Get the Cache-Control min-fresh value.
+ * @return min-fresh in millis.
+ */
+fun List<HeaderValue>.minFresh(): Long? =
+	extractDurationValueAsMillis(this, "min-fresh")
+
+/**
+ * Get the Cache-Control stale-while-revalidate value.
+ * @return stale-while-revalidate in millis.
+ */
+fun List<HeaderValue>.staleWhileRevalidate(): Long? =
+	extractDurationValueAsMillis(this, "stale-while-revalidate")
+
+/**
+ * Get the Cache-Control stale-if-error value.
+ * @return stale-if-error in millis.
+ */
+fun List<HeaderValue>.staleIfError(): Long? =
+	extractDurationValueAsMillis(this, "stale-if-error")
+
+private fun extractDurationValueAsMillis(values: List<HeaderValue>, key: String): Long? {
+	return values.firstOrNull { it.value.startsWith(key) }
 		?.value
 		?.split("=")
 		?.getOrNull(1)
@@ -98,4 +134,19 @@ fun HttpResponse.isReadFromCache(cacheName: String = UbiquacheCacheStatusName): 
 			cacheStatus.params.none { it.name == "stored" && it.value.isEmpty() }
 		hasHit || wasValidated || wasFallback
 	}
+}
+
+/** Returns the TTL of the matching Cache-Status response header
+ * @return ttl in millis.
+  */
+fun HttpResponse.cacheHitTTL(cacheName: String = UbiquacheCacheStatusName): Long? {
+	return cacheStatusValues()
+		.filter { cacheStatus ->
+			cacheStatus.matchesCacheName(cacheName)
+					&& cacheStatus.params.any { it.name == "hit" && it.value.isEmpty() }
+		}
+		.mapNotNull { cacheStatus ->
+			cacheStatus.params.firstOrNull { it.name == "ttl" }?.value?.toLongOrNull()?.times(1000)
+		}
+		.minOrNull()
 }

@@ -1,11 +1,14 @@
 package ch.ubique.libs.ktor.plugins.ubiquache
 
 import ch.ubique.libs.ktor.*
+import ch.ubique.libs.ktor.cache.extensions.cacheHitTTL
 import ch.ubique.libs.ktor.common.now
 import ch.ubique.libs.ktor.common.skipTime
 import ch.ubique.libs.ktor.http.*
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.network.sockets.SocketTimeoutException
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.utils.CacheControl
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headers
@@ -212,6 +215,48 @@ class ResponseCachingTest {
 				assertEquals("cmrqnfpi", response.bodyAsTextBlocking())
 				assertEquals(3, requestHistory.size)
 			}
+		}
+	}
+
+	@Test
+	fun maxstale_cacheHitTTL() {
+		withServer { number, request ->
+			when (number) {
+				1 -> {
+					assertNull(request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "xohbeevi",
+						headers = headers {
+							header(HttpHeaders.CacheControl, "max-age=1")
+							header(HttpHeaders.ETag, "60158417312")
+						}
+					)
+				}
+				else -> fail("Unexpected request number: $number, ${request.headers}")
+			}
+		}.testUbiquache { client ->
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("xohbeevi", response.bodyAsTextBlocking())
+				assertEquals(1, requestHistory.size)
+			}
+			skipTime(1500)
+			run {
+				val response = client.getMockResponseBlocking {
+					headers.header(HttpHeaders.CacheControl, CacheControl.ONLY_IF_CACHED)
+				}
+				assertEquals(HttpStatusCode.GatewayTimeout, response.status)
+			}
+			run {
+				val response = client.getMockResponseBlocking {
+					headers.header(HttpHeaders.CacheControl, "${CacheControl.ONLY_IF_CACHED}, ${CacheControl.MAX_STALE}=10")
+				}
+				assertEquals("xohbeevi", response.bodyAsTextBlocking())
+				val ttl = response.cacheHitTTL()
+				assertNotNull(ttl)
+				assertTrue(ttl <= -1 * 1000) // returned in millis, but Cache-Status is in seconds
+			}
+			assertEquals(1, requestHistory.size)
 		}
 	}
 
@@ -454,6 +499,62 @@ class ResponseCachingTest {
 			run {
 				val response = client.getMockResponseBlocking()
 				assertEquals("nvutzeud", response.bodyAsTextBlocking())
+				assertEquals(2, requestHistory.size)
+			}
+		}
+	}
+
+	@Test
+	fun etag_matchChangedHeader() {
+		withServer { number, request ->
+			when (number) {
+				1 -> {
+					assertNull(request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "aeghouph",
+						headers = headers {
+							header(HttpHeaders.ETag, "804900423")
+							header(HttpHeaders.ContentLength, "8")
+							header(HttpHeaders.CacheControl, "max-age=0")
+							header(HttpHeaders.XRequestId, "1")
+							header(HttpHeaders.ContentType, "text/plain")
+						}
+					)
+				}
+				2 -> {
+					assertEquals("804900423", request.headers[HttpHeaders.IfNoneMatch])
+					respond(
+						content = "",
+						status = HttpStatusCode.NotModified,
+						headers = headers {
+							header(HttpHeaders.ETag, "804900423")
+							header(HttpHeaders.CacheControl, "max-age=1")
+							header(HttpHeaders.XRequestId, "2")
+							// inconsistent, should be ignored
+							header(HttpHeaders.ContentType, "image/png")
+							header(HttpHeaders.ContentEncoding, "gzip")
+						}
+					)
+				}
+				else -> fail("Unexpected request number: $number")
+			}
+		}.testUbiquache { client ->
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("aeghouph", response.bodyAsTextBlocking())
+				assertEquals(1, requestHistory.size)
+			}
+			run {
+				val response = client.getMockResponseBlocking()
+				assertEquals("aeghouph", response.bodyAsTextBlocking())
+				// Updated headers:
+				assertEquals("max-age=1", response.headers[HttpHeaders.CacheControl])
+				assertEquals("2", response.headers[HttpHeaders.XRequestId])
+				// Original values for these specific Content-... headers
+				assertEquals("8", response.headers[HttpHeaders.ContentLength])
+				assertEquals("text/plain", response.headers[HttpHeaders.ContentType])
+				assertNull(response.headers[HttpHeaders.ContentEncoding])
+
 				assertEquals(2, requestHistory.size)
 			}
 		}
